@@ -1,0 +1,277 @@
+import openpyxl
+import time
+from selenium.webdriver.common.action_chains import ActionChains
+from tkinter import filedialog
+from tkinter import *
+import threading
+import pymssql
+import datetime
+import socket
+import pandas as pd
+import os
+from tkinter import messagebox
+from functools import reduce
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from webdriver_manager.chrome import ChromeDriverManager
+from http.cookies import Morsel
+
+root = Tk()
+root.title("MST Allocation Automation")
+window_width = 700
+window_height = 700
+root.geometry(f"{window_width}x{window_height}")
+
+# Variables to store username, password, and Excel file path
+username_var = StringVar()
+password_var = StringVar()
+excel_file_path_var = StringVar()
+download_Folder_path_var = StringVar()
+
+def select_excel_file():
+    file_path = filedialog.askopenfilename()
+    excel_file_path_var.set(file_path)
+
+def download_Folder_path():
+    folder_path = filedialog.askdirectory()
+    download_Folder_path_var.set(folder_path)
+
+def run_script_thread():
+    excel_path = excel_file_path_var.get()
+    # Start a new thread and pass excel_path to run_script
+    threading.Thread(target=run_script, args=(excel_path,)).start()
+
+def consolidate_thread():
+    folder_path = download_Folder_path_var.get()
+    threading.Thread(target=consolidate, args=(folder_path,)).start()
+
+def consolidate(download_folder_path):
+    try:
+        # Set the directory where your Excel files are located
+        directory_path = download_folder_path
+        file_names = [os.path.join(directory_path, file) for file in os.listdir(directory_path)]
+
+        # Read each file into a list of DataFrames, starting from the 3rd row and skipping the 2nd row
+        dfs = [pd.read_excel(file, skiprows=[1]) for file in file_names]
+
+        # Use functools.reduce and pd.concat to concatenate the DataFrames
+        final_df = reduce(lambda x, y: pd.concat([x, y], join='outer', ignore_index=True), dfs)
+
+        # Specify the path where you want to save the concatenated Excel file
+        output_path = os.path.join(directory_path, 'concatenated_data.xlsx')
+
+        # Export the final concatenated DataFrame to Excel
+        final_df.to_excel(output_path, index=False)
+        messagebox.showinfo("Success", "Consolidation done")
+    except Exception as e:
+        messagebox.showerror("Error", f"An error occurred: {str(e)}")
+
+def run_script(excel_file_path):
+    try:
+        username = username_var.get()
+        password = password_var.get()
+        print("Excel File Path:", excel_file_path)
+
+        # Create a service object with the specified path to the Chrome WebDriver executable
+        service = Service(ChromeDriverManager().install())
+
+        # Configure Chrome options for headless mode
+        chrome_options = webdriver.ChromeOptions()
+        # Uncomment the line below if you want to run in headless mode
+        # chrome_options.add_argument('--headless')
+
+        # Create a new instance of the Chrome web driver with the specified service
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver.maximize_window()
+        driver.get('https://redmart.workstation.lazada.com/redmart/apps_v2/rpc_request_list')
+        time.sleep(2)
+        driver.find_element(By.ID, "account").send_keys(username)
+        time.sleep(0.5)
+        driver.find_element(By.ID, "password").send_keys(password)
+        time.sleep(0.5)
+
+        # Click the submit button
+        driver.find_element(By.XPATH, "//button[@type='submit']").click()
+        time.sleep(1)
+
+        # Wait for the OTP page to load
+        time.sleep(0.5)
+        driver.get("https://redmart.workstation.lazada.com/redmart/apps_v2/rpc_request_list")
+        time.sleep(2)
+        driver.execute_script("document.body.style.zoom = '80%'")
+        time.sleep(2)
+
+        draft_status = driver.find_element(By.ID, "draftStatus")
+        draft_status.send_keys("PENDING_APPROVAL")
+        time.sleep(0.5)
+
+        draft_status.send_keys(Keys.ARROW_DOWN)
+        time.sleep(0.5)
+
+        draft_status.send_keys(Keys.RETURN)
+        time.sleep(0.5)
+
+        elemente = driver.find_element(By.CSS_SELECTOR, ".ant-btn.ant-btn-primary")
+        driver.execute_script("arguments[0].click();", elemente)
+
+        element = driver.find_element(By.ID, "lzdCategory")
+        driver.execute_script("arguments[0].click();", element)
+
+        excel_file_pathq = excel_file_path
+        workbook = openpyxl.load_workbook(excel_file_pathq)
+        sheet = workbook.active
+        max_row = sheet.max_row - 1
+
+        pname = username_var.get()
+        server = ""
+        port = 
+        database = ""
+        username = ""
+        password = ""
+        todaym = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        process_name = "MST allocation"
+        count = 0
+        manual = 0
+        automation = 0
+        system_id = socket.gethostname()
+        conn = pymssql.connect(server=server, user=username, password=password, database=database, port=port)
+        cursor = conn.cursor()
+        insert_query = "INSERT INTO [dbo].[Automation_usage] (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        data_to_insert = (todaym, pname, process_name, count, manual, automation, system_id)
+        cursor.execute(insert_query, data_to_insert)
+        conn.commit()
+
+        processed = 0
+
+        for row in sheet.iter_rows(min_col=1, max_col=1, values_only=True):
+            cell_value = row[0]
+
+            elementcat = driver.find_element(By.ID, "lzdCategory")
+            driver.execute_script("arguments[0].click();", elementcat)
+            time.sleep(2)
+            elementcat.send_keys(cell_value)
+            time.sleep(2)
+            cell_value = ""
+            element = driver.find_element(By.CSS_SELECTOR, ".ant-btn.ant-btn-primary")
+            driver.execute_script("arguments[0].click();", element)
+            time.sleep(2)
+
+            try:
+                dropdown_input = driver.find_element(By.ID, "rc_select_1")
+                if dropdown_input:
+                    element_to_click = driver.find_element(By.XPATH, "//span[text()='20 / page']")
+                    time.sleep(2)
+                    ActionChains(driver).move_to_element(element_to_click).click().perform()
+                    time.sleep(2)
+                    option_50_per_page = driver.find_element(By.XPATH, "//div[text()='50 / page']")
+                    driver.execute_script("arguments[0].click();", option_50_per_page)
+                    time.sleep(2)
+                else:
+                    print("Element with ID 'rc_select_1' not found on the page")
+            except Exception as e:
+                print(f"An error occurred: {str(e)}")
+
+            driver.execute_script("window.scrollTo(0, 0);")
+            time.sleep(5)
+            elementch = driver.find_element(By.CLASS_NAME, "ant-checkbox-input")
+            driver.execute_script("arguments[0].click();", elementch)
+            time.sleep(2)
+
+            try:
+                export_element = driver.find_element(By.XPATH, "//span[text()='Export']")
+                driver.execute_script("arguments[0].click();", export_element)
+                time.sleep(2)
+                modal_footer = driver.find_element(By.CLASS_NAME, "ant-modal-footer")
+                time.sleep(2)
+                primary_button = modal_footer.find_element(By.CSS_SELECTOR, ".ant-btn.ant-btn-primary")
+                driver.execute_script("arguments[0].click();", primary_button)
+                time.sleep(2)
+
+                next_button_class = "ant-pagination-next"
+                time.sleep(5)
+                while True:
+                    try:
+                        next_button = driver.find_element(By.CLASS_NAME, next_button_class)
+                        aria_disabled = driver.execute_script("return arguments[0].getAttribute('aria-disabled');", next_button)
+                        if next_button and aria_disabled == "false":
+                            driver.execute_script("arguments[0].click();", next_button)
+                            time.sleep(2)
+                            driver.execute_script("window.scrollTo(0, 0);")
+                            time.sleep(2)
+                            element = driver.find_element(By.CLASS_NAME, "ant-checkbox-input")
+                            driver.execute_script("arguments[0].click();", element)
+                            time.sleep(2)
+
+                            try:
+                                export_element1 = driver.find_element(By.XPATH, "//span[text()='Export']")
+                                driver.execute_script("arguments[0].click();", export_element1)
+                                time.sleep(5)
+                                modal_footer = driver.find_element(By.CLASS_NAME, "ant-modal-footer")
+                                time.sleep(2)
+                                primary_button = modal_footer.find_element(By.CSS_SELECTOR, ".ant-btn.ant-btn-primary")
+                                driver.execute_script("arguments[0].click();", primary_button)
+                                time.sleep(2)
+
+                            except:
+                                break
+                        else:
+                            break
+                    except:
+                        break
+            except Exception as e:
+                print("hello")
+
+            count += 1
+            update_query = "UPDATE Automation_usage SET count = %s WHERE Date = %s and user_name= %s and process_name= %s and system_id=%s"
+            cursor.execute(update_query, (count, todaym, pname, process_name, system_id))
+            conn.commit()
+
+            driver.get("https://redmart.workstation.lazada.com/redmart/apps_v2/rpc_request_list")
+            time.sleep(0.5)
+            driver.execute_script("document.body.style.zoom = '80%'")
+            time.sleep(2)
+            draft_status = driver.find_element(By.ID, "draftStatus")
+            draft_status.send_keys("PENDING_APPROVAL")
+            time.sleep(0.5)
+            draft_status.send_keys(Keys.ARROW_DOWN)
+            time.sleep(0.5)
+            draft_status.send_keys(Keys.RETURN)
+            time.sleep(0.5)
+    except Exception as e:
+        messagebox.showerror("Error", f"An error occurred: {str(e)}")
+
+# UI components
+username_label = Label(root, text="Username:")
+username_label.grid(row=0, column=0, pady=(10, 0))
+
+username_entry = Entry(root, textvariable=username_var)
+username_entry.grid(row=0, column=1, pady=(10, 0))
+
+password_label = Label(root, text="Password:")
+password_label.grid(row=1, column=0, pady=(10, 0))
+
+password_entry = Entry(root, textvariable=password_var)
+password_entry.grid(row=1, column=1, pady=(10, 0))
+
+select_file_button = Button(root, text="Select Excel File", command=select_excel_file)
+select_file_button.grid(row=3, column=0, columnspan=2, pady=(20, 0))
+
+excel_file_label = Label(root, textvariable=excel_file_path_var)
+excel_file_label.grid(row=4, column=0, columnspan=2, pady=(0, 10))
+
+download_file_button = Button(root, text="Consolidate Folder", command=download_Folder_path)
+download_file_button.grid(row=10, column=2, columnspan=2, pady=(20, 0))
+
+download_file_button = Label(root, textvariable=download_Folder_path_var)
+download_file_button.grid(row=11, column=2, columnspan=2, pady=(0, 10))
+
+run_button_consolidate = Button(root, text="Consolidate", command=consolidate_thread)
+run_button_consolidate.grid(row=12, column=2, columnspan=2, pady=(20, 0))
+
+run_button_action = Button(root, text="Action", command=run_script_thread)
+run_button_action.grid(row=12, column=0, columnspan=2, pady=(20, 0))
+
+# Run the tkinter main loop
+root.mainloop()
