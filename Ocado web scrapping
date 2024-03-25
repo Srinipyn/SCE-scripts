@@ -1,0 +1,223 @@
+import openpyxl
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+import time
+from datetime import datetime
+import tkinter as tk
+from tkinter import filedialog, messagebox
+import pymssql
+import datetime
+import socket
+from http.cookies import Morsel
+
+def process_row():
+    excel_links = file_var.get()
+    workbook = openpyxl.load_workbook(excel_links)
+    sheet = workbook.active
+    max_row = sheet.max_row
+
+    pname = 'Category managemnet - Amit'
+    server = "*****"
+    port = ****
+    database = '****'
+    username = '****'
+    password = '****'
+
+    todaym = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    process_name = "Ocado web scrapping"
+    count = 0
+    manual = 0
+    autoamtion = 0
+    system_id = socket.gethostname()
+    conn = pymssql.connect(server=server, user=username, password=password, database=database, port=port)
+    cursor = conn.cursor()
+    insert_query = "INSERT INTO [dbo].[Automation_usage] (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (todaym, pname, process_name, count, manual, autoamtion, system_id)
+    cursor.execute(insert_query, data_to_insert)
+    conn.commit()
+
+    for row_number in range(2, max_row + 1):
+        options = webdriver.ChromeOptions()
+        driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+
+        try:
+            google_search_url = "https://www.google.com/search?q="
+
+            driver.get(google_search_url)
+            driver.maximize_window()
+            time.sleep(1)
+            sku = 'ocado'
+            elementcat = driver.find_element(By.ID, "APjFqb")
+            driver.execute_script("arguments[0].click();", elementcat)
+            time.sleep(2)
+
+            element = driver.find_element(By.ID, "APjFqb")
+            element.send_keys(sku)
+            driver.execute_script("arguments[0].click();", element)
+            time.sleep(2)
+            elementc = driver.find_element(By.CLASS_NAME, "gNO89b")
+            driver.execute_script("arguments[0].click();", elementc)
+
+            title_cell = sheet.cell(row=row_number, column=1)
+            title = title_cell.value
+            time.sleep(2)
+            elementcat = driver.find_element(By.ID, "APjFqb")
+            elementcat.clear()
+            element = driver.find_element(By.ID, "APjFqb")
+            element.send_keys(title)
+            driver.execute_script("arguments[0].click();", element)
+            time.sleep(2)
+            elementc = driver.find_element(By.CLASS_NAME, "zgAlFc")
+            driver.execute_script("arguments[0].click();", elementc)
+
+            elementa = driver.find_element(By.CSS_SELECTOR, ".LC20lb.MBeuO.DKV0Md")
+            driver.execute_script("arguments[0].click();", elementa)
+
+            elementj = driver.find_element(By.ID, "onetrust-accept-btn-handler")
+            driver.execute_script("arguments[0].click();", elementj)
+
+            try:
+                elements = driver.find_elements(By.CSS_SELECTOR, ".icon.icon__chevron-down.gn-expandableBar__icon")
+
+                for element in elements:
+                    try:
+                        driver.execute_script("arguments[0].click();", element)
+                        time.sleep(2)
+                    except Exception as e:
+                        print(f"Failed to click element: {e}")
+
+            except NoSuchElementException:
+                print("No elements found.")
+
+                # title
+
+            try:
+                # Find and extract product name
+                product_name_element = driver.find_element(By.XPATH, "//header[@class='bop-title']/h1")
+                product_name = product_name_element.text
+
+                # Find and extract catch weight
+                catch_weight_element = driver.find_element(By.CLASS_NAME, 'bop-catchWeight')
+                catch_weight = catch_weight_element.text
+
+            except NoSuchElementException:
+                pass
+
+            # product information
+            try:
+                sku_elementcheck = driver.find_elements(By.CSS_SELECTOR,'.gn-expandableBar__header.gn-expandableBar__header--expanded')
+                num_elements = len(sku_elementcheck)
+                description_index, usage_index, ingredient_index, brand_index, nutrition_index = None, None, None, None, None
+                description, usage, brand, nutrition, ingredient = "", "", "", "", ""
+                # Loop through the elements to find the indices of "description," "usage," and "ingredient"
+                for index, element in enumerate(sku_elementcheck):
+                    text_lower = element.text.lower()
+                    if "description" in text_lower:
+                        description_index = index
+                        sku_elements = driver.find_elements(By.CSS_SELECTOR,'.gn-accordionElement__content.gn-accordionElement__content--expanded')
+                        description = sku_elements[description_index].text
+                    if "usage" in text_lower:
+                        usage_index = index
+                        sku_elements = driver.find_elements(By.CSS_SELECTOR,'.gn-accordionElement__content.gn-accordionElement__content--expanded')
+                        usage = sku_elements[usage_index].text
+                    if "brand details" in text_lower:
+                        brand_index = index
+                        sku_elements = driver.find_elements(By.CSS_SELECTOR,'.gn-accordionElement__content.gn-accordionElement__content--expanded')
+                        brand = sku_elements[brand_index].text
+                    if "nutrition" in text_lower:
+                        nutrition_index = index
+                        sku_elements = driver.find_elements(By.CSS_SELECTOR,'.gn-accordionElement__content.gn-accordionElement__content--expanded')
+                        nutrition = sku_elements[nutrition_index].text
+                    if "ingredients" in text_lower:
+                        ingredient_index = index
+                        sku_elements = driver.find_elements(By.CSS_SELECTOR,'.gn-accordionElement__content.gn-accordionElement__content--expanded')
+                        ingredient = sku_elements[ingredient_index].text
+
+
+            except NoSuchElementException:
+                pass
+
+            time.sleep(2)
+
+            # diet
+
+            try:
+                diet_element = driver.find_element(By.CLASS_NAME, 'bop-tagsWrapper')
+                diet_tags = diet_element.find_elements(By.CLASS_NAME, 'bop-tag')
+                diet = ', '.join(tag.text for tag in diet_tags)
+            except NoSuchElementException:
+                pass
+
+            # diet
+
+            try:
+                cat_tags = driver.find_elements(By.CLASS_NAME, 'bop-categoryTagLabel')
+                cat = ', '.join(tag.text for tag in cat_tags)
+            except NoSuchElementException:
+                pass
+
+
+            sheet.cell(row=row_number, column=2, value=product_name)
+            sheet.cell(row=row_number, column=3, value=catch_weight)
+            sheet.cell(row=row_number, column=4, value=description)
+            sheet.cell(row=row_number, column=5, value=usage)
+            sheet.cell(row=row_number, column=6, value=brand)
+            sheet.cell(row=row_number, column=7, value=nutrition)
+            sheet.cell(row=row_number, column=8, value=ingredient)
+            sheet.cell(row=row_number, column=9, value=diet)
+            sheet.cell(row=row_number, column=10, value=cat)
+
+            workbook.save(excel_links)
+            count = count + 1
+            update_query = "UPDATE Automation_usage SET count = %s WHERE Date = %s and user_name= %s and process_name= %s and system_id=%s  "
+            cursor.execute(update_query, (count, todaym, pname, process_name, system_id))
+            conn.commit()
+
+
+        except Exception as e:
+            error_message = f"An error occurred: {e}"
+            print(error_message)
+
+        finally:
+            driver.quit()
+
+def select_file():
+    file_selected = filedialog.askopenfilename(
+        title="Select Excel File",
+        filetypes=[("Excel Files", "*.xlsx;*.xls")],
+    )
+    file_var.set(file_selected)
+
+# Create the main window
+root = tk.Tk()
+root.title("Excel Processing Tool")
+
+# Variables
+file_var = tk.StringVar()
+
+# File Selection
+file_label = tk.Label(root, text="Select Excel File:")
+file_label.place(x=10, y=10)
+
+file_entry = tk.Entry(root, textvariable=file_var, state="readonly", width=40)
+file_entry.place(x=130, y=10)
+
+file_button = tk.Button(root, text="Browse", command=select_file)
+file_button.place(x=280, y=30)
+
+# Current Row and Total Rows Labels
+# current_row_label = tk.Label(root, text="Current Row: 0")
+# current_row_label.place(x=10, y=40)
+#
+# total_rows_label = tk.Label(root, text="Total Rows: 0")
+# total_rows_label.place(x=10, y=60)
+
+# Start Processing Button
+start_button = tk.Button(root, text="Start Processing", command=process_row)
+start_button.place(x=10, y=80)
+
+root.geometry("400x120")
+root.mainloop()
