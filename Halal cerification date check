@@ -1,0 +1,218 @@
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+from datetime import datetime, timedelta
+import pandas as pd
+from openpyxl import Workbook
+from openpyxl.styles import PatternFill
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+import smtplib
+import os
+import pymssql
+import socket
+
+
+
+class ExcelFilterApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Excel Filter and Email App")
+
+        # Variables for input fields
+        self.days_var = tk.StringVar()
+        self.sender_var = tk.StringVar()
+        self.password_var = tk.StringVar()
+        self.receivers_var = tk.StringVar()
+        self.input_file_var = tk.StringVar()
+        self.output_folder_var = tk.StringVar()
+        self.download_folder_var = tk.StringVar()
+
+        # Create and place widgets
+        ttk.Label(root, text="Days:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        ttk.Entry(root, textvariable=self.days_var).grid(row=0, column=1, padx=5, pady=5)
+
+        # ttk.Label(root, text="Sender Email:").grid(row=1, column=0, sticky="w", padx=5, pady=5)
+        # ttk.Entry(root, textvariable=self.sender_var).grid(row=1, column=1, padx=5, pady=5)
+        #
+        # ttk.Label(root, text="Password:").grid(row=2, column=0, sticky="w", padx=5, pady=5)
+        # ttk.Entry(root, textvariable=self.password_var, show="*").grid(row=2, column=1, padx=5, pady=5)
+
+        ttk.Label(root, text="Receiver Emails (comma-separated):").grid(row=3, column=0, sticky="w", padx=5, pady=5)
+        ttk.Entry(root, textvariable=self.receivers_var).grid(row=3, column=1, padx=5, pady=5)
+
+        ttk.Label(root, text="Input Excel File:").grid(row=4, column=0, sticky="w", padx=5, pady=5)
+        ttk.Entry(root, textvariable=self.input_file_var).grid(row=4, column=1, padx=5, pady=5)
+        ttk.Button(root, text="Browse", command=self.browse_input_file).grid(row=4, column=2, padx=5, pady=5)
+
+        ttk.Label(root, text="Output Folder:").grid(row=5, column=0, sticky="w", padx=5, pady=5)
+        ttk.Entry(root, textvariable=self.output_folder_var).grid(row=5, column=1, padx=5, pady=5)
+        ttk.Button(root, text="Browse", command=self.browse_output_folder).grid(row=5, column=2, padx=5, pady=5)
+
+        ttk.Button(root, text="Filter and Email", command=self.filter_and_email).grid(row=7, column=1, pady=10)
+
+    def browse_input_file(self):
+        file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx;*.xls")])
+        self.input_file_var.set(file_path)
+
+    def browse_output_folder(self):
+        folder_path = filedialog.askdirectory()
+        self.output_folder_var.set(folder_path)
+
+    def select_download_folder(self):
+        folder_path = filedialog.askdirectory()
+        self.download_folder_var.set(folder_path)
+
+    def is_past_date(self, date_str):
+        try:
+            date_obj = datetime.strptime(date_str, "%d-%m-%Y %H:%M:%S").date()
+            days_later = datetime.now().date() + timedelta(days=int(self.days_var.get()))
+            return date_obj < days_later
+        except ValueError:
+            print("Invalid date format:", date_str)
+            return False
+
+    def filter_and_email(self):
+        try:
+            # Read the Excel file into a DataFrame
+            df = pd.read_excel(self.input_file_var.get())
+            df['Check status'] = ''
+
+
+            # Create a new Excel workbook
+            output_wb = Workbook()
+            output_ws = output_wb.active
+
+            # Define red fill for highlighting
+            red_fill = PatternFill(start_color='FF0000', end_color='FF0000', fill_type='solid')
+
+            # Copy headers
+            for col_index, col_name in enumerate(df.columns):
+                output_ws.cell(row=1, column=col_index + 1, value=col_name)
+
+            # Iterate over each row in the DataFrame
+            for row_index, row in df.iterrows():
+                expired_count = 0  # Initialize the count of expired certificates for the current row
+                for col_index, value in enumerate(row):
+                    # Skip highlighting for columns N(14) and O(15) and M(13)
+                    if col_index not in [13, 14]:
+                        if isinstance(value, str) and "/" in value:
+                            if self.is_past_date(value):
+                                output_ws.cell(row=row_index + 2, column=col_index + 1).fill = red_fill
+                                df.at[int(row_index), 'Check status'] = 'Past Date Available'  # Fix the indexing
+                                expired_count += 1  # Increment the count of expired certificates
+
+                            output_ws.cell(row=row_index + 2, column=col_index + 1).value = value.split()[
+                                0]  # Extract only date part
+
+                        elif isinstance(value, pd.Timestamp) or str(value).find("00:00:00") != -1:
+                            date_str = value.strftime("%d-%m-%Y %H:%M:%S")
+                            if "00:00:00" in date_str:
+                                if self.is_past_date(date_str):
+                                    output_ws.cell(row=row_index + 2, column=col_index + 1).fill = red_fill
+                                    df.at[int(row_index), 'Check status'] = 'Past Date Available'  # Fix the indexing
+                                    expired_count += 1  # Increment the count of expired certificates
+
+                            output_ws.cell(row=row_index + 2,
+                                           column=col_index + 1).value = value.date()  # Extract only date part
+
+                        else:
+                            output_ws.cell(row=row_index + 2, column=col_index + 1).value = value
+                    else:
+                        output_ws.cell(row=row_index + 2, column=col_index + 1).value = value.date()
+
+                # Set the value of the "Expired Certificates Count per Supplier" column for the current row
+                output_ws.cell(row=row_index + 2, column=len(df.columns) + 1).value = expired_count
+
+            # Update the headers to include the new column
+            output_ws.cell(row=1, column=len(df.columns) + 1, value="Expired Certificates Count per Supplier")
+
+            # Update the 'Check status' column in the newly created Excel file
+            check_status_col_index = df.columns.get_loc('Check status') + 1
+            for row_index, value in enumerate(df['Check status']):
+                output_ws.cell(row=row_index + 2, column=check_status_col_index).value = value
+
+            # Create the output folder if it doesn't exist
+            os.makedirs(self.output_folder_var.get(), exist_ok=True)
+
+            # Construct the output filename based on today's date and expired certificate date
+            today_date_str = datetime.now().strftime("%Y%m%d")
+            output_filename = f"Filtered_Output_{today_date_str}.xlsx"
+            output_filepath = os.path.join(self.output_folder_var.get(), output_filename)
+
+            # Save the workbook with highlighted dates to the specified path
+            output_wb.save(output_filepath)
+            total_supplier_count = df.iloc[:, 1].count()
+            pname = 'Partner management - sheeba'
+            server = "****"
+            port = ****
+            database = '****'
+            username = '****'
+            password = '****'
+
+            todaym = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            process_name = "Halal cerification date check"
+            count = int(total_supplier_count)
+            manual = 0
+            autoamtion = 0
+            system_id = socket.gethostname()
+            conn = pymssql.connect(server=server, user=username, password=password, database=database, port=port)
+            cursor = conn.cursor()
+            insert_query = "INSERT INTO [dbo].[Automation_usage] (Date, user_name, process_name, count, manual, automation, system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+            data_to_insert = (todaym, pname, process_name, count, manual, autoamtion, system_id)
+            cursor.execute(insert_query, data_to_insert)
+            conn.commit()
+
+            # Print the count
+
+
+
+            # Send email with attachment using SMTP mail
+            # Email details
+            sender_email = 'pythonautomailsqc@gmail.com'
+            app_password = 'vwib bxpc vdum cbmh'
+            receiver_emails = [email.strip() for email in self.receivers_var.get().split(",")]
+            subject = "Filtered Output Excel File"
+            body = "Hi All,\n\nPlease find the filtered output Excel file attached.\n\nThank you,\nTeam Automation"
+
+            # Create a multipart message and set headers
+            message = MIMEMultipart()
+            message["From"] = sender_email
+            message["To"] = ", ".join(receiver_emails)
+            message["Subject"] = subject
+
+            # Add body to email
+            message.attach(MIMEText(body, "plain"))
+
+            # Open the file in binary mode and add as attachment
+            with open(output_filepath, "rb") as attachment:
+                part = MIMEBase("application", "octet-stream")
+                part.set_payload(attachment.read())
+
+            encoders.encode_base64(part)
+
+            part.add_header(
+                "Content-Disposition",
+                f"attachment; filename= {os.path.basename(output_filepath)}",
+            )
+
+            message.attach(part)
+            text = message.as_string()
+
+            # Log in to SMTP server and send email
+            with smtplib.SMTP("smtp.gmail.com", 587) as server:
+                server.starttls()  # Secure the connection
+                server.login(sender_email, app_password)
+                server.sendmail(sender_email, receiver_emails, text)
+
+            messagebox.showinfo("Mail sent successfully", f"Total count of suppliers: {total_supplier_count}")
+
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            messagebox.showerror("Error", f"Error: {str(e)}")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ExcelFilterApp(root)
+    root.mainloop()
