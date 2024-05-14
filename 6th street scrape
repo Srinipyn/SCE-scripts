@@ -1,0 +1,141 @@
+import openpyxl
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+import time
+from tkinter import filedialog, messagebox
+import tkinter as tk
+from selenium.webdriver.common.keys import Keys
+
+def process_row():
+    excel_links = file_var.get()
+    workbook = openpyxl.load_workbook(excel_links)
+    sheet = workbook.active
+    max_row = sheet.max_row
+    options = webdriver.ChromeOptions()
+    driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+    google_search_url = "https://en-ae.6thstreet.com/men.html"
+    driver.get(google_search_url)
+    driver.maximize_window()
+    time.sleep(1)
+    for row_number in range(2, max_row + 1):
+
+        try:
+            title_cell = sheet.cell(row=row_number, column=1)
+            title = title_cell.value
+            element = driver.find_element(By.ID, "search-field")
+            time.sleep(2)
+            element.send_keys(title)
+            time.sleep(2)
+            element.send_keys(Keys.ENTER)
+            time.sleep(4)
+
+            try:
+                elementcat = driver.find_element(By.XPATH, '//button[text()="SHOW MORE DETAILS"]')
+                driver.execute_script("arguments[0].click();", elementcat)
+                time.sleep(2)
+                try:
+                    brand_element = driver.find_element(By.CLASS_NAME, 'pdpsummarylinkTagStyle')
+                    brand = brand_element.text
+                except NoSuchElementException:
+                    brand = None
+                time.sleep(2)
+                try:
+                    title_element = driver.find_element(By.CLASS_NAME, 'PDPSummary-Name')
+                    title = title_element.text
+                except NoSuchElementException:
+                    title = None
+                time.sleep(2)
+                try:
+                    description_element = driver.find_element(By.CLASS_NAME, 'PDPDetailsSection-Description')
+                    description = description_element.text
+                except NoSuchElementException:
+                    description = None
+                time.sleep(2)
+                try:
+                    # Find all elements with the specified class name
+                    highlights_elements = driver.find_elements(By.CLASS_NAME, 'PDPDetailsSection-HighlightsList')
+
+                    # Extract text from each element
+                    highlights_data = [element.text for element in highlights_elements]
+                except NoSuchElementException:
+                    # Handle the case where no elements with the specified class name are found
+                    highlights_data = []
+                time.sleep(2)
+
+                try:
+                    sku_element = driver.find_element(By.CLASS_NAME, 'PDPDetailsSection-Highlights-SKU')
+                    span_elements = sku_element.find_elements(By.TAG_NAME, 'span')
+
+                    # Check if there is at least a second span element
+                    if len(span_elements) >= 2:
+                        # Extract the text content from the second span element
+                        sku_details = span_elements[1].text
+                    else:
+                        sku_details = None
+                except NoSuchElementException:
+                    sku_details = None
+
+                try:
+                    # Find all elements matching the specified class
+                    image_elements = driver.find_elements(By.CSS_SELECTOR,
+                                                          '.Image.Image_imageStatus_1.Image_hasSrc.PDPGallery-sliderItem img')
+
+                    # Extract the src attribute from each image element
+                    image_urls = [image_element.get_attribute('src') for image_element in image_elements]
+                except NoSuchElementException:
+                    # Handle the case where no image elements are found
+                    image_urls = []
+
+                sheet.cell(row=row_number, column=2, value=brand)
+                sheet.cell(row=row_number, column=3, value=title)
+                sheet.cell(row=row_number, column=4, value=description)
+                sheet.cell(row=row_number, column=5, value='\n'.join(highlights_data))
+                sheet.cell(row=row_number, column=6, value=sku_details)
+                sheet.cell(row=row_number, column=7, value='\n'.join(image_urls))
+                workbook.save(excel_links)
+
+            except NoSuchElementException:
+                # Handle the case where the button is not found
+                pass
+
+
+        except NoSuchElementException:
+
+            # Handle the case where the button is not found
+
+            pass
+
+def select_file():
+    file_selected = filedialog.askopenfilename(
+        title="Select Excel File",
+        filetypes=[("Excel Files", "*.xlsx;*.xls")],
+    )
+    if file_selected:
+        file_var.set(file_selected)
+
+# Create the main window
+root = tk.Tk()
+root.title("Excel Processing Tool")
+
+# Variables
+file_var = tk.StringVar()
+
+# File Selection
+file_label = tk.Label(root, text="Select Excel File:")
+file_label.place(x=10, y=10)
+
+file_entry = tk.Entry(root, textvariable=file_var, state="readonly", width=40)
+file_entry.place(x=130, y=10)
+
+file_button = tk.Button(root, text="Browse", command=select_file)
+file_button.place(x=280, y=30)
+
+# Start Processing Button
+start_button = tk.Button(root, text="Start Processing", command=process_row)
+start_button.place(x=10, y=80)
+
+root.geometry("400x120")
+root.mainloop()
