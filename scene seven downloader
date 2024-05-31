@@ -1,0 +1,222 @@
+from tkinter.font import Font
+import pyautogui
+from PIL import ImageGrab
+import pytesseract
+import openpyxl
+from pywinauto import Application
+import time
+import psutil
+from pywinauto.keyboard import send_keys
+import pandas as pd
+import tkinter
+from tkinter import *
+import os
+import socket
+import pymssql
+import datetime
+
+pyautogui.FAILSAFE = False
+empty_SAPKEY = []
+zip_link = pd.DataFrame(columns=['ZIP','SAPKEY'])
+
+
+def activate_and_click(x, y):
+ time.sleep(2)
+
+# Move the mouse to the specified (x, y) coordinates
+ pyautogui.click(x, y)
+
+def act(pname,folder,file,zip_link,x,y):
+    xordi = x
+    yordi = y
+    up_xordi = int(xordi)
+    up_yordi = int(yordi)
+
+
+    download_path = folder
+    workbook = openpyxl.load_workbook(file)
+    sap = pd.read_excel(file, engine='openpyxl', header=None)
+    IDs = sap.values.tolist()
+    df = pd.DataFrame()
+
+    application_title = "Adobe Dynamic Media Classic"
+    app_window = pyautogui.getWindowsWithTitle(application_title)[0]
+    app_window.activate()
+
+    time.sleep(5)
+
+    # for m in range(0, 8):
+    #     send_keys("{VK_TAB}")
+    #     time.sleep(0.2)
+    #     m = m + 1
+    # send_keys("{ENTER}")
+    # time.sleep(2)
+    # for n in range(0, 12):
+    #     pyautogui.press('down')
+    #     time.sleep(0.2)
+    #     n = n + 1
+    # send_keys("{ENTER}")
+    # time.sleep(10)
+    # for l in range(0, 19):
+    #     send_keys("{VK_TAB}")
+    #     time.sleep(0.2)
+    #     l = l + 1
+
+    # Replace these placeholders with your actual database credentials
+
+    todaym = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    process_name= "Scene7"
+    count=0
+    manual=3
+    autoamtion=1.5
+    system_id= socket.gethostname()
+    conn = pymssql.connect(host="mssql-130344-0.cloudclusters.net",
+                    port=19219,
+                    user="root",
+                    password="Srini@1994",
+                    database="admin1")
+    cursor = conn.cursor()
+    insert_query = "INSERT INTO Automation_usage (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (todaym, pname, process_name,count,manual, autoamtion,system_id)
+    cursor.execute(insert_query, data_to_insert)
+    conn.commit()
+
+    for i in range(0,len(IDs)):
+            print(IDs[i][0])
+            time.sleep(1)
+            pyautogui.write(IDs[i][0])
+            # send_keys("{VK_TAB}")
+            time.sleep(1)
+            send_keys("{ENTER}")
+            time.sleep(10)
+            # Capture a screenshot of the desired region
+            screenshot = ImageGrab.grab()
+            extracted_text = pytesseract.image_to_string(screenshot)
+            print(extracted_text)
+            if "Search Complete" in extracted_text or "Ssaich cumpisis" in extracted_text :
+                    worksheet = workbook['Sheet1']  # Replace 'Sheet1' with the actual sheet name
+                    worksheet.cell(row=i+1, column=2).value = 'Not Downloaded'
+                    workbook.save(file)
+                    time.sleep(1)
+                    send_keys("{ENTER}")
+                    time.sleep(1)
+                    pyautogui.hotkey('shift', 'tab')
+                    # for n in range(0, 14):
+                    #     send_keys("{VK_TAB}")
+                    #     time.sleep(0.2)
+                    #     n = n + 1
+                    pyautogui.press('delete')
+            else:
+                    worksheet = workbook['Sheet1']  # Replace 'Sheet1' with the actual sheet name
+                    time.sleep(1)
+
+                    for o in range(0, 11):
+                        send_keys("{VK_TAB}")
+                        time.sleep(0.2)
+                        o = o + 1
+                    send_keys("{ENTER}")
+                    time.sleep(1)
+                    pyautogui.hotkey('ctrl', 'a')
+                    time.sleep(0.2)
+                    for p in range(0, 11):
+                        send_keys("{VK_TAB}")
+                        time.sleep(0.2)
+                        p = p + 1
+                    send_keys("{ENTER}")
+                    time.sleep(3)  # enter for the file drop down menu
+
+                    # pyautogui.click(up_xordi, up_yordi)
+                    time.sleep(2)
+                    for n in range(0, 2):
+                        pyautogui.press('down')
+                        time.sleep(0.2)
+                        n = n + 1
+                    send_keys("{ENTER}")
+
+                    time.sleep(1)
+
+                    send_keys("{ENTER}")
+                    time.sleep(2)
+
+                    screenshot1 = ImageGrab.grab()
+                    extracted_text1 = pytesseract.image_to_string(screenshot1)
+                    print(extracted_text1)
+                    if "Export Selected Assets" in extracted_text1:
+                        worksheet = workbook['Sheet1']  # Replace 'Sheet1' with the actual sheet name
+                        worksheet.cell(row=i + 1, column=2).value = 'Downloaded'
+                        workbook.save(file)
+                        send_keys("{ENTER}")
+                        time.sleep(30)
+                        # change the name of the folder
+                        files = os.listdir(download_path)
+                        zip_files = [file for file in files if file.endswith('.zip')]
+                        latest_zip_file = max(zip_files, key=lambda x: os.path.getmtime(os.path.join(download_path, x)))
+                        latest_zip_file_path = os.path.join(download_path, latest_zip_file)
+                        new_file_name = IDs[i][0] + ".zip"
+                        new_file_path = os.path.join(download_path, new_file_name)
+                        os.rename(latest_zip_file_path, new_file_path)
+
+                        application_title = "Adobe Dynamic Media Classic"
+                        app_window = pyautogui.getWindowsWithTitle(application_title)[0]
+                        app_window.activate()
+
+                        time.sleep(3)
+                        pyautogui.press('esc')
+                        time.sleep(1)
+                        time.sleep(0.2)
+                        for n in range(0, 13):
+                            send_keys("{VK_TAB}")
+                            time.sleep(0.2)
+                            n = n + 1
+                        pyautogui.press('delete')
+
+                    else:
+                            pyautogui.press('esc')
+                            time.sleep(0.2)
+                            for n in range(0, 13):
+                                send_keys("{VK_TAB}")
+                                time.sleep(0.2)
+                                n = n + 1
+                            pyautogui.press('delete')
+
+            counts = i + 1
+            update_query = "UPDATE Automation_usage SET count = %s WHERE Date = %s and user_name= %s and process_name= %s and system_id=%s  "
+            cursor.execute(update_query, (counts, todaym, pname, process_name, system_id))
+            conn.commit()
+
+
+root = tkinter.Tk()
+root.title("Image downloader")
+
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+
+root.geometry(f"{screen_width}x{screen_height}")
+
+font = Font(size=20, weight="bold",underline=True)
+tite=Label(root,text = "Scene7 Image Downloader",font = font).place(x=600, y=100)
+
+name = Label(root, text="Enter Username").place(x=350, y=260, anchor="e")
+name_path = Entry(root)
+name_path.place(x=370, y=250)
+
+a = Label(root ,text="Enter Downloads folder path").place(x=350, y=310, anchor="e")
+folder_path = Entry(root)
+folder_path.place(x=370, y=300)
+
+b = Label(root ,text="Upload SAPKEY file(.xlsx)").place(x=350, y=360, anchor="e")
+file_path = Entry(root)
+file_path.place(x=370, y=350)
+
+
+d = Label(root ,text="X-Cordinate").place(x=350, y=460, anchor="e")
+xordi = Entry(root)
+xordi.place(x=370, y=450)
+
+e = Label(root ,text="Y-Cordinate").place(x=350, y=510, anchor="e")
+yordi = Entry(root)
+yordi.place(x=370, y=500)
+
+start = Button(root,text = "Start",command =lambda: act(name_path.get(),folder_path.get(),file_path.get(),zip_link,xordi.get(),yordi.get())).place(x=300, y=550)
+exit = Button(root,text = "Cancel",command=root.destroy).place(x=380, y=550)
+root.mainloop()
