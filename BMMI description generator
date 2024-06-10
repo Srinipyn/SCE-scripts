@@ -1,0 +1,224 @@
+import openpyxl
+import openai
+import tkinter as tk
+from tkinter import font, filedialog, messagebox
+import datetime
+import pymssql
+import socket
+from tkinter import ttk
+import threading
+import re
+import os
+from openpyxl.styles import Font, PatternFill
+
+openai.api_key = '******sdbbd8888888'
+model_id = 'gpt-3.5-turbo'
+
+# Initialize conversation with a system message
+
+def select_file():
+    file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx; *.xls; *.csv")])
+    file_entry.delete(0, tk.END)
+    file_entry.insert(tk.END, file_path)
+
+
+def start_task():
+    thread = threading.Thread(target=Process)
+    thread.start()
+
+def ChatGPT_conversation(conversation):
+    response = openai.ChatCompletion.create(
+        model=model_id,
+        messages=conversation
+    )
+    conversation.append({'role': response.choices[0].message.role, 'content': response.choices[0].message.content})
+    return conversation
+
+def highlight_words_and_cells(sheet, highlight_words):
+    # Set up the red font and yellow background fill
+    red_font = Font(color="FF0000")  # Red color
+    yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")  # Yellow background
+
+    for row in range(2, sheet.max_row + 1):
+        for word in highlight_words.split(","):
+            # Iterate through each word to highlight
+            cell = sheet.cell(row=row, column=3)
+            cell_value = cell.value
+            if cell_value and word.strip() in cell_value:
+                # Apply red font to the word
+                start_index = cell_value.find(word.strip())
+                end_index = start_index + len(word.strip())
+                cell.font = red_font
+                # Apply yellow background fill to the entire cell
+                cell.fill = yellow_fill
+
+def Process():
+    try:
+        file_path = file_entry.get()
+        workbook = openpyxl.load_workbook(file_path)
+        sheet = workbook.active
+        max_row = sheet.max_row - 1
+
+        pname = name_path.get()
+        server = ""
+        port = 
+        database = ''
+        username = ''
+        password = ''
+
+        todaym = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        process_name = "BMMI Description generator"
+        count = 0
+        manual = 0
+        autoamtion = 0
+        system_id = socket.gethostname()
+        conn = pymssql.connect(server=server, user=username, password=password, database=database, port=port)
+        cursor = conn.cursor()
+        insert_query = "INSERT INTO [dbo].[Automation_usage] (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        data_to_insert = (todaym, pname, process_name, count, manual, autoamtion, system_id)
+        cursor.execute(insert_query, data_to_insert)
+        conn.commit()
+
+        processed = 0
+        image_count_label.config(text=f"Processed: {processed}/{max_row}")
+        progress_step = 100 / max_row
+        progress = 0
+        highlight_words = character_entry.get()
+        # highlight_words_str = ", ".join(highlight_words)
+
+        for row in range(2, sheet.max_row + 1):
+            concatenated_values = ", ".join(
+                str(sheet.cell(row=row, column=col).value) if sheet.cell(row=row, column=col).value is not None else ""
+                for col in range(2, 3))
+            conversation = [{'role': 'system',
+                             'content': 'You are a helpful assistant that generates product descriptions without using these words' + highlight_words + 'in the description'
+                                        'Create a product description for this product ' + concatenated_values +
+                                        'in less than 150 words and 3 bullet points with 30 words each so that customers want to buy it and the selling points are described do not start with word introducing' }]
+
+            conversation = ChatGPT_conversation(conversation)
+            generated_text1 = '{0}\n'.format(conversation[-1]['content'].strip())
+            original_text = generated_text1
+            print(original_text)
+            # Apply red color formatting to the words in highlight_words
+            # for word in highlight_words:
+            #     original_text = original_text.replace(word, f'<font color="red">{word}</font>')
+
+            sheet.cell(row=row, column=3).value = original_text
+            paragraphs = re.split(r'\n\s*\n', original_text)
+
+            # Initialize an empty list to store formatted paragraphs
+            formatted_paragraphs = []
+
+            # Iterate through the paragraphs and add HTML tags
+            for paragraph in paragraphs:
+                # Wrap the paragraph with <p> tags
+                if '\n' in paragraph:
+                    formatted_paragraph = f'{paragraph}</p>'
+                else:
+                    formatted_paragraph = f'{paragraph}</p>'
+                # Add <br> tags at the end of each list item
+                formatted_paragraph = re.sub(r'(- .*?)(\n|$)', r'\1<br>\2', formatted_paragraph)
+                formatted_paragraph = formatted_paragraph.replace('</p><br>', '</p>')
+                formatted_paragraphs.append(formatted_paragraph)
+
+            # Join the paragraphs back into a single string
+            converted_text = '\n'.join(formatted_paragraphs)
+            sheet.cell(row=row, column=3, value=converted_text)
+
+            counts = row + 1
+            # Highlight words within cells and entire cells based on those words
+            # highlight_words_and_cells(sheet, highlight_words)
+
+            # progress += progress_step
+            # progress_bar["value"] = progress
+            processed += 1
+            image_count_label.config(text=f"Processed: {processed}/{max_row}")
+            root.update_idletasks()
+
+            workbook.save(file_path)
+        # workbook.close()
+
+
+
+            update_query = "UPDATE Automation_usage SET count = %s WHERE Date = %s and user_name= %s and process_name= %s and system_id=%s"
+            update_to_insert = (processed, todaym, pname, process_name, system_id)
+            cursor.execute(update_query, update_to_insert)
+            conn.commit()
+        # highlight_words_and_cells(sheet, highlight_words)
+        workbook.save(file_path)
+
+        messagebox.showinfo("Alert", "Processing completed!")
+
+    except Exception as e:
+        messagebox.showerror("Error", f"An error occurred: {str(e)}")
+
+def start_QC():
+    file_path = file_entry.get()
+    workbook = openpyxl.load_workbook(file_path)
+    sheet = workbook.active
+    highlight_wordss = character_entry.get()
+    # Define the words to highlight
+    words_to_highlight = [word.strip().lower() for word in highlight_wordss.split(',')]
+
+    # Define fill color for highlighting
+    highlight_fill = PatternFill(start_color='FFFF00', end_color='FFFF00', fill_type='solid')
+
+    # Iterate through each cell in the 4th column
+    for row in sheet.iter_rows(min_row=1, max_row=sheet.max_row, min_col=4, max_col=4):
+        for cell in row:
+            cell_value = str(cell.value).lower()
+
+            # Check each word to highlight
+            for word in words_to_highlight:
+                if word.lower() in cell_value:
+                    # Replace the word
+                    cell_value = cell_value.replace(word.lower(), f"#%{word.lower()}#%")
+                    # Fill the cell yellow
+                    cell.fill = highlight_fill
+
+            # Update the cell value
+            cell.value = cell_value
+
+    # Save the modified Excel file
+    workbook.save(file_path)
+
+
+root = tk.Tk()
+root.title("Squared Circle Business Tools")
+
+# Get the screen width and height
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+
+# Set the window size
+root.geometry(f"{screen_width}x{screen_height}")
+
+# Select Files
+file_label = tk.Label(root, text="Select File:")
+file_label.place(x=200, y=300)
+file_entry = tk.Entry(root, width=40)
+file_entry.place(x=350, y=300)
+file_button = tk.Button(root, text="Browse", command=select_file)
+file_button.place(x=600, y=300)
+
+character_label = tk.Label(root, text="Words", anchor="e")
+character_label.place(x=200, y=350)
+character_entry = tk.Entry(root, width=40)
+character_entry.place(x=350, y=350)
+
+process_button = tk.Button(root, text="Process", command=start_task)
+process_button.place(x=350, y=500)
+
+process_button = tk.Button(root, text="QC", command=start_QC)
+process_button.place(x=450, y=500)
+
+name_label = tk.Label(root, text="Enter Username")
+name_label.place(x=300, y=260, anchor="e")
+name_path = tk.Entry(root)
+name_path.place(x=350, y=250)
+
+image_count_label = tk.Label(root, text="Processed: 0/0")
+image_count_label.place(x=350, y=425)
+
+progress_bar = ttk.Progressbar(root, orient="horizontal", length=300, mode="determinate")
+root.mainloop()
