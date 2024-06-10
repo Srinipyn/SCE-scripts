@@ -1,3 +1,4 @@
+
 from tkinter.font import Font
 import pyautogui
 from PIL import ImageGrab
@@ -26,6 +27,43 @@ def activate_and_click(x, y):
 # Move the mouse to the specified (x, y) coordinates
  pyautogui.click(x, y)
 
+def wait_for_download_to_start(download_path, check_interval=2):
+    """
+    Waits for a download to start in the specified download path by checking for the presence of a .crdownload file.
+    """
+    while True:
+        time.sleep(check_interval)
+        if any(file.endswith('.crdownload') for file in os.listdir(download_path)):
+            return True
+def wait_for_download_to_complete(download_path, check_interval=2):
+    """
+    Waits for any download to complete in the specified download path.
+    Returns the name of the downloaded file once the download is complete.
+    """
+    download_in_progress = True
+    downloaded_file = None
+
+    while download_in_progress:
+        time.sleep(check_interval)
+        files = os.listdir(download_path)
+        crdownload_files = [file for file in files if file.endswith('.crdownload')]
+
+        if not crdownload_files:
+            downloaded_files = [file for file in files if not file.endswith('.crdownload')]
+            if downloaded_files:
+                downloaded_file = max(downloaded_files, key=lambda x: os.path.getmtime(os.path.join(download_path, x)))
+                download_in_progress = False
+
+    return downloaded_file
+
+def wait_for_file(file_path, check_interval=2):
+    """
+    Waits indefinitely for a file to exist at file_path, checking every check_interval seconds.
+    Returns True when the file is found.
+    """
+    while not os.path.exists(file_path):
+        time.sleep(check_interval)
+    return True
 def act(pname,folder,file,zip_link,x,y):
     xordi = x
     yordi = y
@@ -70,11 +108,11 @@ def act(pname,folder,file,zip_link,x,y):
     manual=3
     autoamtion=1.5
     system_id= socket.gethostname()
-    conn = pymssql.connect(host="mssql-130344-0.cloudclusters.net",
-                    port=19219,
-                    user="root",
-                    password="Srini@1994",
-                    database="admin1")
+    conn = pymssql.connect(host="",
+                    port=,
+                    user="",
+                    password="",
+                    database="")
     cursor = conn.cursor()
     insert_query = "INSERT INTO Automation_usage (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
     data_to_insert = (todaym, pname, process_name,count,manual, autoamtion,system_id)
@@ -88,6 +126,8 @@ def act(pname,folder,file,zip_link,x,y):
             # send_keys("{VK_TAB}")
             time.sleep(1)
             send_keys("{ENTER}")
+
+
             time.sleep(10)
             # Capture a screenshot of the desired region
             screenshot = ImageGrab.grab()
@@ -143,10 +183,11 @@ def act(pname,folder,file,zip_link,x,y):
                     print(extracted_text1)
                     if "Export Selected Assets" in extracted_text1:
                         worksheet = workbook['Sheet1']  # Replace 'Sheet1' with the actual sheet name
-                        worksheet.cell(row=i + 1, column=2).value = 'Downloaded'
-                        workbook.save(file)
+
                         send_keys("{ENTER}")
-                        time.sleep(30)
+                        # time.sleep(30)
+                        wait_for_download_to_start(download_path)
+                        wait_for_download_to_complete(download_path)
                         # change the name of the folder
                         files = os.listdir(download_path)
                         zip_files = [file for file in files if file.endswith('.zip')]
@@ -155,6 +196,9 @@ def act(pname,folder,file,zip_link,x,y):
                         new_file_name = IDs[i][0] + ".zip"
                         new_file_path = os.path.join(download_path, new_file_name)
                         os.rename(latest_zip_file_path, new_file_path)
+                        wait_for_file(new_file_path)
+                        worksheet.cell(row=i + 1, column=2).value = 'Downloaded'
+                        workbook.save(file)
 
                         application_title = "Adobe Dynamic Media Classic"
                         app_window = pyautogui.getWindowsWithTitle(application_title)[0]
