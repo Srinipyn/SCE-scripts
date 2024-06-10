@@ -1,0 +1,278 @@
+
+Sub ApplyConditionsToColumnE()
+     Dim lastRow As Long
+    Dim rng As Range
+    Dim cell As Range
+    Dim i As Long
+    Dim rowsToDelete As Range ' Collect the rows to delete
+    
+    Application.ScreenUpdating = False ' Turn off screen updating for better performance
+    
+    ' Find the last row of data in Column E
+    lastRow = Cells(Rows.count, "E").End(xlUp).Row
+    
+    ' Loop through each cell in Column E (in reverse order)
+    For i = lastRow To 2 Step -1
+        Set cell = Range("E" & i)
+        
+        ' Convert the given value to the date format "yyyy-mm-dd"
+        If IsNumeric(cell.Value) And Len(cell.Value) = 8 Then
+            Dim yearPart As String
+            Dim monthPart As String
+            Dim dayPart As String
+            
+            yearPart = Left(cell.Value, 4)
+            monthPart = Mid(cell.Value, 5, 2)
+            dayPart = Right(cell.Value, 2)
+            
+            cell1 = yearPart & "-" & monthPart & "-" & dayPart
+            
+            If IsDate(cell1) Then
+                If CDate(cell1) <= Date Then
+                    ' Collect rows to delete
+                    If rowsToDelete Is Nothing Then
+                        Set rowsToDelete = cell.EntireRow
+                    Else
+                        Set rowsToDelete = Union(rowsToDelete, cell.EntireRow)
+                    End If
+                End If
+            End If
+        End If
+    Next i
+    
+    ' Delete collected rows (if any)
+    If Not rowsToDelete Is Nothing Then
+        rowsToDelete.Delete
+    End If
+    
+    Application.ScreenUpdating = True ' Turn on screen updating
+    
+    MsgBox "Rows deleted successfully.", vbInformation
+End Sub
+
+
+
+
+Sub ConditionsToColumnE()
+    Dim lastRow As Long
+    Dim rng As Range
+    Dim cell As Range
+    
+    ' Find the last row of data in Column E
+    lastRow = Cells(Rows.count, "E").End(xlUp).Row
+    
+    ' Loop through each cell in Column E
+    For Each cell In Range("E2:E" & lastRow)
+        
+        ' Undo the date format conversion
+        If Len(cell.Value) = 10 Then
+            cell.Value = Mid(cell.Value, 7, 4) & Mid(cell.Value, 4, 2) & Mid(cell.Value, 1, 2)
+        End If
+        cell.NumberFormat = "0"
+    Next cell
+End Sub
+
+Sub ApplyConditionsToColumnB()
+     Dim dict As Object
+    Dim dataRange As Range
+    Dim cell As Range
+    Dim uniqueValues() As String
+    Dim i As Integer
+    Dim count As Integer
+    Dim keywordCount As Long
+    Dim keywords As Collection
+    Dim hasDuplicate As Boolean
+    
+    
+
+    ' Create a dictionary object
+    Set dict = CreateObject("Scripting.Dictionary")
+
+    ' Set the range containing your data
+    Set dataRange = Range("B2:B" & Cells(Rows.count, 1).End(xlUp).Row)
+    count = dataRange.Rows.count
+    
+    
+    
+    'track code
+'------------
+
+
+ Dim rs As ADODB.Recordset
+    Dim sql As String
+    Dim ID As String
+    Dim Price As Double
+    Dim Stock As Integer
+    Dim computerName As String
+    
+    Dim conn As Object
+    
+    
+    Dim serverName As String
+    Dim port As String
+    Dim database As String
+    Dim Usernameq As String
+    Dim passwordq As String
+    Dim ju
+    Dim Nameq
+    Dim currentDate
+    Dim nowDate
+    Dim process_name
+    
+    ' Set the connection parameters
+    serverName = "fffff"
+    port = ""
+    database = ""
+    Usernameq = ""
+    passwordq = ""
+    
+    ' Construct the connection string
+    Dim connectionString As String
+    connectionString = "Driver={SQL Server};Server=" & serverName & "," & port & ";Database=" & database & ";Uid=" & Usernameq & ";Pwd=" & passwordq & ";"
+    Set conn = CreateObject("ADODB.Connection")
+    ' Open the connection
+    conn.Open connectionString
+    
+    Set rs = New ADODB.Recordset
+    
+    'assuming the IDs are in column A, and prices and stocks in columns B and C respectively
+    'and the data starts from row 2
+    
+    
+    ju = count
+    'MPDB = Sheets("Search and update").Cells(10, 16).Value
+    
+        
+        Nameq = "channel"
+        currentDate = Now
+        nowDate = Format(currentDate, "yyyy-mm-dd hh:mm:ss")
+        computerName = Environ("COMPUTERNAME")
+        process_name = "sponser search"
+        sql = "INSERT INTO [dbo].[Automation_usage](Date,user_name,process_name,count,system_id) VALUES " & _
+             "('" & nowDate & "','" & Nameq & "','" & process_name & "','" & ju & "','" & computerName & "')"
+        
+        rs.Open sql, conn
+    
+     If rs.State = adStateOpen Then
+            rs.Close
+        End If
+    
+   
+     conn.Close
+     Set rs = Nothing
+     Set conn = Nothing
+
+
+    ' Loop through each cell in the specified range
+    For Each cell In dataRange
+        If Not dict.exists(cell.Value) Then
+            ' Add the value to the dictionary if it doesn't already exist
+            dict.Add cell.Value, 1 ' Initialize count to 1
+        Else
+            ' Increment count for this value
+            dict(cell.Value) = dict(cell.Value) + 1
+        End If
+    Next cell
+
+    ' Resize the array to fit the unique values
+    ReDim uniqueValues(1 To dict.count, 1 To 2)
+
+    ' Copy unique values and their counts from dictionary to array
+    i = 1
+    For Each Key In dict.Keys
+        uniqueValues(i, 1) = Key ' Unique value
+        uniqueValues(i, 2) = dict(Key) ' Count of occurrences
+        i = i + 1
+    Next Key
+
+    ' Output the unique values and their counts
+    For i = LBound(uniqueValues, 1) To UBound(uniqueValues, 1)
+        Debug.Print uniqueValues(i, 1) & ": " & uniqueValues(i, 2)
+    Next i
+    
+    
+     ' Loop through each cell in the specified range
+        For i = LBound(uniqueValues, 1) To UBound(uniqueValues, 1)
+        
+        For Each cell In dataRange
+        If cell.Value = uniqueValues(i, 1) Then
+         count = count + 1
+         End If
+        If count > 3 And cell.Value = uniqueValues(i, 1) Then
+                cell.Interior.Color = RGB(255, 255, 0) ' Highlight in yellow
+                Range("B" & cell.Row & ":B" & cell.Row).EntireRow.Interior.Color = RGB(255, 255, 0) ' Highlight the row in red
+
+            
+            End If
+            
+            If count = CInt(uniqueValues(i, 2)) Then
+            
+            Exit For
+            
+            End If
+            
+        Next cell
+        count = 0
+    Next i
+    
+    
+   count = 0
+  lastRow = Cells(Rows.count, "B").End(xlUp).Row
+  
+   
+    For i = LBound(uniqueValues, 1) To UBound(uniqueValues, 1)
+        
+        For Each cell In Range("B2:B" & lastRow)
+        
+        If cell.Value = uniqueValues(i, 1) Then
+         count = count + 1
+        End If
+         
+        If count > 3 And cell.Value = uniqueValues(i, 1) Then
+          hasDuplicate = True
+          Exit For
+        End If
+                      
+        Next cell
+        count = 0
+    
+    Next i
+    
+    
+    ' Show a pop-up message for duplicate keywords
+    If hasDuplicate Then
+        MsgBox "Error: Duplicate keyword"
+        Else
+        MsgBox "Good to proceed"
+    End If
+    
+    ' Clear the collection
+    Set keywords = Nothing
+    
+    
+    
+End Sub
+
+Sub CutAndPasteValuesByComma()
+    Dim rng As Range
+    Dim cell As Range
+    Dim splitValues As Variant
+    Dim i As Integer
+    
+    ' Define the range to work with (you can change this to your desired range)
+    Set rng = Range("H1:H10000")
+    
+    ' Loop through each cell in the range
+    For Each cell In rng
+        ' Split the cell value by comma
+        splitValues = Split(cell.Value, ",")
+        
+        ' Clear the original cell value
+        cell.ClearContents
+        
+        ' Loop through each value and paste it in consecutive cells in the same row
+        For i = LBound(splitValues) To UBound(splitValues)
+            cell.Offset(0, i).Value = Trim(splitValues(i))
+        Next i
+    Next cell
+End Sub
