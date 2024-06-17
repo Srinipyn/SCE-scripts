@@ -1,0 +1,652 @@
+import time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from datetime import datetime
+from selenium.webdriver.support.ui import Select
+import tkinter as tk
+from tkinter import messagebox
+from tkinter import font,filedialog
+import openpyxl
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
+import math
+import pymssql
+import datetime
+import socket
+def select_file():
+    file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.csv *.xls *.xlsx")])
+    file_entry.delete(0, tk.END)
+    file_entry.insert(tk.END, file_path)
+
+def existing():
+    file_path = file_entry.get()
+    options = webdriver.ChromeOptions()
+    driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+    workbook = openpyxl.load_workbook(file_path)
+    sheet = workbook.active
+    last_row = sheet.max_row
+    # start = datetime.now()
+    # Define the maximum number of elements to process on each page
+    rank = int(rank_entry.get())  # Set your desired maximum number of elements
+    # Define the number of pages to loop through
+    number_of_pages = int(page_entry.get()) # Replace with the actual number of pages you want to process
+
+    # set drop down value to no. of elements
+    lines = 200
+    cat_id = campaign_entry.get() #'Pay Day Offer (ID: 1775) (215)'
+    userid = 'rohit.vijay@eyewa.com'
+    password = 'MRj!k7S8j&dXzX9X'
+    link = r'https://adm.eyewa.com/eyewa_adminpanel/admin/index/index/key/d62eebeed3af7adc818bf69150475eb9a1d4988fec3418725e0d57b29226f525/'
+
+    try:
+        driver.get(link)
+        elementuser = driver.find_element(By.NAME, "login[username]")
+        elementuser.send_keys(userid)
+        elementpass = driver.find_element(By.NAME, "login[password]")
+        elementpass.send_keys(password)
+
+        elementcat = driver.find_element(By.CSS_SELECTOR, "button.action-login.action-primary")
+        driver.execute_script("arguments[0].click();", elementcat)
+        time.sleep(5)
+
+        # Maximize the browser window
+        driver.maximize_window()
+
+        # Locate the top-level 'Catalog' menu item
+        catalog_menu_item = driver.find_element(By.CSS_SELECTOR, "li#menu-magento-catalog-catalog > a")
+        catalog_menu_item.click()
+
+        # Wait for the submenu to be visible
+        time.sleep(2)  # Adjust sleep time as needed for the submenu to appear
+
+        # Locate the 'Categories' submenu item
+        categories_menu_item = driver.find_element(By.CSS_SELECTOR, "li.item-catalog-categories > a")
+
+        # Click the 'Categories' submenu item
+        categories_menu_item.click()
+
+        # Optionally, wait for some time to observe the result
+        time.sleep(5)
+
+        # Wait until the element is present (you may need to adjust the locator if necessary)
+        wait = WebDriverWait(driver, 10)
+        elementc = wait.until(EC.presence_of_element_located((By.XPATH, f"//span[contains(text(), '{cat_id}')]")))
+
+        # Click on the element
+        elementc.click()
+        time.sleep(2)
+        # Scroll to the top of the page
+        driver.execute_script("window.scrollTo(0, 0);")
+        time.sleep(2)
+        driver.execute_script("window.scrollTo(0, 0);")
+
+        try:
+            strong_element = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.XPATH,
+                                                "//strong[contains(@class, 'admin__collapsible-title') and .//span[text()='Products in Category']]"))
+            )
+
+            # Click the strong element
+            strong_element.click()
+
+        finally:
+            # Close the WebDriver after some time
+            pass
+
+        # Wait until the dropdown is present
+        wait = WebDriverWait(driver, 10)
+        dropdown = wait.until(EC.presence_of_element_located((By.ID, "catalog_category_products_page-limit")))
+
+        # Create a Select object and select the option with the value "200"
+        select = Select(dropdown)
+        select.select_by_value(f"{lines}")
+        time.sleep(3)
+
+        try:
+            # Locate and click the 'Position' column header to sort
+            position_header = wait.until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "th.data-grid-th._sortable.not-sort.col-position")))
+            position_header.click()
+
+        finally:
+            # Close the WebDriver after some time
+            pass
+
+
+
+
+        for page_number in range(1, number_of_pages + 1):
+            print(f"Processing page {page_number} of {number_of_pages}")
+
+            # Scroll to the bottom of the page using JavaScript
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(3)
+
+            try:
+                elements = WebDriverWait(driver, 10).until(
+                    EC.presence_of_all_elements_located(
+                        (By.XPATH, "//div[@class='admin__grid-control']//span[@class='admin__grid-control-value']")
+                    )
+                )
+            except TimeoutException as e:
+                messagebox.showerror("Error", e)
+                break
+
+            time.sleep(3)
+
+
+
+            # Loop through elements and process only up to the maximum specified
+            for i, element in enumerate(elements):
+                try:
+                    # Locate the input field adjacent to the located span
+                    input_element = element.find_element(By.XPATH, "../input[@name='position']")
+
+                    # Get the current value of the input field
+                    current_value = input_element.get_attribute('value')
+
+                    # Check if the current value is 100 or more
+                    if int(current_value) >= rank + 1 :
+                        continue  # Skip this element and continue with the next one
+
+                    # Remove the 'disabled' attribute using JavaScript
+                    driver.execute_script("arguments[0].removeAttribute('disabled')", input_element)
+
+                    # Clear the input field
+                    input_element.clear()
+
+                    # Enter the new value
+                    input_element.send_keys("1000")
+
+                except NoSuchElementException as e:
+                    messagebox.showerror("Error", e)
+
+            driver.execute_script("window.scrollTo(0, 0);")
+            time.sleep(2)
+            driver.execute_script("window.scrollTo(0, 0);")
+
+            try:
+                # Wait until the specific "Save" button is clickable
+                save_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH,
+                                                "//button[contains(@class, 'action- scalable save primary ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only')]"))
+                )
+
+                # Click the specific "Save" button
+                save_button.click()
+                time.sleep(5)
+            except TimeoutException as e:
+                messagebox.showerror("Error", e)
+                break
+
+            click_number = page_number + 1
+
+            # Click the "Next" button to go to the next page
+            if page_number < number_of_pages:
+                driver.execute_script("window.scrollTo(0, 0);")
+                time.sleep(2)
+                driver.execute_script("window.scrollTo(0, 0);")
+
+                try:
+                    strong_element = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH,
+                                                        "//strong[contains(@class, 'admin__collapsible-title') and .//span[text()='Products in Category']]"))
+                    )
+
+                    # Click the strong element
+                    strong_element.click()
+                except TimeoutException as e:
+                    messagebox.showerror("Error", e)
+                    break
+
+                wait = WebDriverWait(driver, 10)
+                dropdown = wait.until(EC.presence_of_element_located((By.ID, "catalog_category_products_page-limit")))
+
+                # Create a Select object and select the option with the value "200"
+                select = Select(dropdown)
+                select.select_by_value(f"{pages}")
+                time.sleep(3)
+
+                try:
+                    # Locate the input field for the page number
+                    page_number_input = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.ID, "catalog_category_products_page-current"))
+                    )
+
+                    # Clear the input field
+                    page_number_input.clear()
+
+                    # Enter the desired page number
+                    page_number_input.send_keys(f"{click_number}")
+
+                    # Optionally, simulate pressing Enter to trigger the page change
+                    page_number_input.send_keys(u'\ue007')
+                except TimeoutException as e:
+                    messagebox.showerror("Error", e)
+                    break
+
+    except Exception as e:
+        messagebox.showerror("Error", e)
+
+
+
+    finally:
+        skus = rank_entry.get()
+        pname = user_entry.get()
+        server = ""
+        port = 
+        database = ''
+        username = ''
+        password = ''
+
+        todaym = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        process_name = "Magento updation - existing skus"
+        count = skus
+        manual = 0
+        autoamtion = 0
+        system_id = socket.gethostname()
+        conn = pymssql.connect(server=server, user=username, password=password, database=database, port=port)
+        cursor = conn.cursor()
+        insert_query = "INSERT INTO [dbo].[Automation_usage] (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        data_to_insert = (todaym, pname, process_name, count, manual, autoamtion, system_id)
+        cursor.execute(insert_query, data_to_insert)
+        conn.commit()
+        ranking(driver, file_path)
+        # Close the browser
+        driver.quit()
+
+
+def new():
+    options = webdriver.ChromeOptions()
+    driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+    lines = 200
+    cat_id = campaign_entry.get() #'Pay Day Offer (ID: 1775) (215)'
+    userid = 'rohit.vijay@eyewa.com'
+    password = 'MRj!k7S8j&dXzX9X'
+    link = r'https://adm.eyewa.com/eyewa_adminpanel/admin/index/index/key/d62eebeed3af7adc818bf69150475eb9a1d4988fec3418725e0d57b29226f525/'
+    file_path = file_entry.get()
+    workbook = openpyxl.load_workbook(file_path)
+    sheet = workbook.active
+    last_row = sheet.max_row
+
+    try:
+        driver.get(link)
+        elementuser = driver.find_element(By.NAME, "login[username]")
+        elementuser.send_keys(userid)
+        elementpass = driver.find_element(By.NAME, "login[password]")
+        elementpass.send_keys(password)
+
+        elementcat = driver.find_element(By.CSS_SELECTOR, "button.action-login.action-primary")
+        driver.execute_script("arguments[0].click();", elementcat)
+        time.sleep(5)
+
+        # Maximize the browser window
+        driver.maximize_window()
+
+        # Locate the top-level 'Catalog' menu item
+        catalog_menu_item = driver.find_element(By.CSS_SELECTOR, "li#menu-magento-catalog-catalog > a")
+        catalog_menu_item.click()
+
+        # Wait for the submenu to be visible
+        time.sleep(2)  # Adjust sleep time as needed for the submenu to appear
+
+        # Locate the 'Categories' submenu item
+        categories_menu_item = driver.find_element(By.CSS_SELECTOR, "li.item-catalog-categories > a")
+
+        # Click the 'Categories' submenu item
+        categories_menu_item.click()
+
+        # Optionally, wait for some time to observe the result
+        time.sleep(5)
+
+        # Wait until the element is present (you may need to adjust the locator if necessary)
+        wait = WebDriverWait(driver, 10)
+        elementc = wait.until(EC.presence_of_element_located((By.XPATH, f"//span[contains(text(), '{cat_id}')]")))
+
+        # Click on the element
+        elementc.click()
+        time.sleep(2)
+        # Scroll to the top of the page
+        driver.execute_script("window.scrollTo(0, 0);")
+        time.sleep(2)
+        driver.execute_script("window.scrollTo(0, 0);")
+        try:
+            strong_element = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.XPATH,
+                                                "//strong[contains(@class, 'admin__collapsible-title') and .//span[text()='Products in Category']]"))
+            )
+
+            # Click the strong element
+            strong_element.click()
+
+        finally:
+            # Close the WebDriver after some time
+            pass
+
+        # Wait until the dropdown is present
+
+        wait = WebDriverWait(driver, 10)
+        dropdown = wait.until(EC.presence_of_element_located((By.ID, "catalog_category_products_page-limit")))
+
+        # Create a Select object and select the option with the value "200"
+        select = Select(dropdown)
+        select.select_by_value(f"{lines}")
+        time.sleep(3)
+        try:
+            # Wait until the label is present and get the number of pages
+            number_of_pages_element = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located(
+                    (By.XPATH, "//label[@for='catalog_category_products_page-current']/span"))
+            )
+            number_of_pages = number_of_pages_element.text
+            number_of_pages = int(number_of_pages)
+            print("Number of pages:", number_of_pages)
+
+        finally:
+            pass
+
+        # loops through each page
+        for page_number in range(1, number_of_pages + 1):
+            print(f"Processing page {page_number} of {number_of_pages}")
+
+            # Scroll to the bottom of the page using JavaScript
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(3)
+            # start = datetime.now()
+            # print(f"start: {start}")
+            elements = WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located(
+                    (By.XPATH, "//div[@class='admin__grid-control']//span[@class='admin__grid-control-value']"))
+            )
+            time.sleep(3)
+            # loops through each SKU for chnaging 1000
+            for element in elements:
+                try:
+                    # Locate the input field adjacent to the located span
+                    input_element = element.find_element(By.XPATH, "../input[@name='position']")
+
+                    # Remove the 'disabled' attribute using JavaScript
+                    driver.execute_script("arguments[0].removeAttribute('disabled')", input_element)
+
+                    # Clear the input field
+                    input_element.clear()
+
+                    # Enter the new value
+                    input_element.send_keys("1000")
+
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+            # end = datetime.now()
+            # print(f"end: {end}")
+            # total = end - start
+            # print(total)
+            driver.execute_script("window.scrollTo(0, 0);")
+            time.sleep(2)
+            driver.execute_script("window.scrollTo(0, 0);")
+            # Wait until the specific "Save" button is clickable
+            save_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, f"//button[contains(@class, 'action- scalable save primary ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only')]"))
+            )
+
+            # Click the specific "Save" button
+            save_button.click()
+            time.sleep(5)
+            # set the page for next run
+            click_number = page_number + 1
+
+            if page_number < number_of_pages:
+
+                driver.execute_script("window.scrollTo(0, 0);")
+                time.sleep(2)
+                driver.execute_script("window.scrollTo(0, 0);")
+                # this is working
+                try:
+                    strong_element = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH,
+                                                        "//strong[contains(@class, 'admin__collapsible-title') and .//span[text()='Products in Category']]"))
+                    )
+
+                    # Click the strong element
+                    strong_element.click()
+
+                finally:
+
+                    # Close the WebDriver after some time
+                    pass
+                wait = WebDriverWait(driver, 10)
+                dropdown = wait.until(EC.presence_of_element_located((By.ID, "catalog_category_products_page-limit")))
+
+                # Create a Select object and select the option with the value "200"
+                select = Select(dropdown)
+                select.select_by_value(f"{lines}")
+                time.sleep(3)
+
+                # Locate the input field for the page number
+                page_number_input = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.ID, "catalog_category_products_page-current"))
+                )
+
+                # Clear the input field
+                page_number_input.clear()
+
+                # Enter the desired page number
+                page_number_input.send_keys(f"{click_number}")
+
+                # Optionally, simulate pressing Enter to trigger the page change
+                page_number_input.send_keys(u'\ue007')
+
+
+    except Exception as e:
+        messagebox.showerror("Error", e)
+
+    finally:
+        # Close the browser
+        pname = user_entry.get()
+        server = ""
+        port = 
+        database = ''
+        username = ''
+        password = ''
+
+        todaym = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        process_name = "Magento updation - new skus"
+        count = number_of_pages
+        manual = 0
+        autoamtion = 0
+        system_id = socket.gethostname()
+        conn = pymssql.connect(server=server, user=username, password=password, database=database, port=port)
+        cursor = conn.cursor()
+        insert_query = "INSERT INTO [dbo].[Automation_usage] (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        data_to_insert = (todaym, pname, process_name, count, manual, autoamtion, system_id)
+        cursor.execute(insert_query, data_to_insert)
+        conn.commit()
+        ranking(driver, file_path)
+        driver.quit()
+
+# def qc():
+#     fi
+
+def ranking(driver, file_path):
+
+    try:
+        driver.execute_script("window.scrollTo(0, 0);")
+        time.sleep(2)
+        driver.execute_script("window.scrollTo(0, 0);")
+
+        try:
+            strong_element = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.XPATH,
+                                                "//strong[contains(@class, 'admin__collapsible-title') and .//span[text()='Products in Category']]"))
+            )
+
+            # Click the strong element
+            strong_element.click()
+
+        finally:
+            # Close the WebDriver after some time
+            pass
+        workbook = openpyxl.load_workbook(file_path)
+        sheet = workbook.active
+        last_row = sheet.max_row
+        # Counter for activities after every 20 loops
+        loop_counter = 0
+        for row_idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True),
+                                      start=2):  # min_row=2 to skip the header row
+            SKU = row[0]  # Assuming 'SKU' is the first column
+            Rank = row[1]  # Assuming 'Ranking' is the second column
+            print(f"SKU: {SKU}, Rank: {Rank}")
+            comment = ""
+
+            # Wait until the input element is present
+            input_elements = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, 'catalog_category_products_filter_sku'))
+            )
+
+            # Clear any existing value in the input field (optional)
+            input_elements.clear()
+
+            # Input data to the element
+            input_elements.send_keys(SKU)
+            input_elements.send_keys(Keys.ENTER)
+            time.sleep(2)
+            try:
+                # Locate the input element within the div
+                input_elementr = driver.find_element(By.XPATH,
+                                                     "//div[@class='admin__grid-control']/input[@name='position']")
+
+                # Clear any existing value in the input field (optional)
+                input_elementr.clear()
+
+                # Input data to the element
+                input_elementr.send_keys(Rank)
+                comment = "SKU found and updated"
+
+            except NoSuchElementException as ex:
+
+                print(f"NoSuchElementException: {ex}")
+                comment = "SKU not found"
+                continue
+
+                # Simulate pressing the Enter key
+                # Write comment to the third column
+            sheet.cell(row=row_idx, column=3).value = comment
+            # Save the updated workbook
+            workbook.save(file_path)
+
+            # Increment loop counter
+            loop_counter += 1
+
+            # Check if 20 loops have been completed
+            if loop_counter % 20 == 0 or last_row == row_idx:
+                print("yes")
+                save_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH,
+                                                f"//button[contains(@class, 'action- scalable save primary ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only')]"))
+                )
+
+                # Click the specific "Save" button
+                save_button.click()
+                time.sleep(5)
+                # Add your additional activities here
+                # Scroll to the top of the page
+                driver.execute_script("window.scrollTo(0, 0);")
+                time.sleep(2)
+                driver.execute_script("window.scrollTo(0, 0);")
+
+                try:
+                    strong_element = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH,
+                                                        "//strong[contains(@class, 'admin__collapsible-title') and .//span[text()='Products in Category']]"))
+                    )
+
+                    # Click the strong element
+                    strong_element.click()
+
+                finally:
+                    # Close the WebDriver after some time
+                    pass
+
+    except Exception as e:
+        messagebox.showerror("Error", e)
+
+    finally:
+        # Close the browser
+        pname = user_entry.get()
+        server = ""
+        port = 
+        database = ''
+        username = ''
+        password = ''
+
+        todaym = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        process_name = "Magento updation - ranking"
+        count = last_row - 1
+        manual = 0
+        autoamtion = 0
+        system_id = socket.gethostname()
+        conn = pymssql.connect(server=server, user=username, password=password, database=database, port=port)
+        cursor = conn.cursor()
+        insert_query = "INSERT INTO [dbo].[Automation_usage] (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        data_to_insert = (todaym, pname, process_name, count, manual, autoamtion, system_id)
+        cursor.execute(insert_query, data_to_insert)
+        conn.commit()
+        driver.quit()
+        messagebox.showerror("status", "Done")
+
+root = tk.Tk()
+root.title("Eyewa ranking")
+
+# Get the screen width and height
+screen_width = 500
+screen_height = 500
+
+# Set the window size
+root.geometry(f"{screen_width}x{screen_height}")
+
+
+user_label = tk.Label(root, text="User name:")
+user_label.place(x=10, y=50)
+user_entry = tk.Entry(root, width=20)
+user_entry.place(x=70, y=50)
+
+# Select Files
+file_label = tk.Label(root, text="Select File:")
+file_label.place(x=10, y=100)
+file_entry = tk.Entry(root, width=40)
+file_entry.place(x=70, y=100)
+file_button = tk.Button(root, text="Browse", command=select_file)  # select_file
+file_button.place(x=350, y=95)
+
+campaign_label = tk.Label(root, text="Campaign ID")
+campaign_label.place(x=10, y=150)
+campaign_entry = tk.Entry(root, width=40)
+campaign_entry.place(x=70, y=150)
+
+rank_label = tk.Label(root, text="Rank for existing")
+rank_label.place(x=10, y=200)
+rank_entry = tk.Entry(root, width=10)
+rank_entry.place(x=120, y=200)
+
+page_label = tk.Label(root, text="Page for existing")
+page_label.place(x=10, y=250)
+page_entry = tk.Entry(root, width=10)
+page_entry.place(x=120, y=250)
+
+file_buttona = tk.Button(root, text="Existing", command=existing)  # select_file
+file_buttona.place(x=200, y=400)
+
+file_buttonb = tk.Button(root, text="New", command=new)  # select_file
+file_buttonb.place(x=300, y=400)
+
+# file_buttonc = tk.Button(root, text="QC", command=qc)  # select_file
+# file_buttonc.place(x=400, y=400)
+
+
+
+
+root.mainloop()
