@@ -497,7 +497,7 @@ def ranking(driver, file_path):
         last_row = sheet.max_row
         # Counter for activities after every 20 loops
         loop_counter = 0
-        for row_idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True),
+                for row_idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True),
                                       start=2):  # min_row=2 to skip the header row
             SKU = row[0]  # Assuming 'SKU' is the first column
             Rank = row[1]  # Assuming 'Ranking' is the second column
@@ -517,17 +517,34 @@ def ranking(driver, file_path):
             input_elements.send_keys(Keys.ENTER)
             time.sleep(2)
             try:
-                # Locate the input element within the div
-                input_elementr = driver.find_element(By.XPATH,
-                                                     "//div[@class='admin__grid-control']/input[@name='position']")
+                # Locate the table containing the results
+                table = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.ID, 'catalog_category_products_table'))
+                )
 
-                # Clear any existing value in the input field (optional)
-                input_elementr.clear()
+                # Iterate over the rows to find the exact SKU match
+                rows = table.find_elements(By.XPATH, ".//tbody/tr")
+                a = len(row)
+                sku_found = False
+                for tr in rows:
+                    # Find the SKU cell in the current row
+                    sku_cell = tr.find_element(By.XPATH, ".//td[contains(@class, 'col-sku')]")
 
-                # Input data to the element
-                input_elementr.send_keys(Rank)
-                comment = "SKU found and updated"
+                    if sku_cell.text.strip() == SKU:
+                        # Find the input element within the row for the position
+                        input_elementr = tr.find_element(By.XPATH, ".//input[@name='position']")
 
+                        # Clear any existing value in the input field (optional)
+                        input_elementr.clear()
+
+                        # Input Rank data to the element
+                        input_elementr.send_keys(Rank)
+                        comment = "SKU found and updated"
+                        sku_found = True
+                        break
+
+                if not sku_found:
+                    comment = "Exact SKU not found"
             except NoSuchElementException as ex:
 
                 print(f"NoSuchElementException: {ex}")
