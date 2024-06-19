@@ -19,7 +19,6 @@ import pymssql
 import datetime
 import socket
 from http.cookies import Morsel
-
 def select_file():
     file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.csv *.xls *.xlsx")])
     file_entry.delete(0, tk.END)
@@ -41,8 +40,8 @@ def existing():
     # set drop down value to no. of elements
     lines = 200
     cat_id = campaign_entry.get() #'Pay Day Offer (ID: 1775) (215)'
-    userid = 'rohit.vijay@eyewa.com'
-    password = 'MRj!k7S8j&dXzX9X'
+    userid = user_entry.get()#'rohit.vijay@eyewa.com'
+    password = password_entry.get()#'MRj!k7S8j&dXzX9X'
     link = r'https://adm.eyewa.com/eyewa_adminpanel/admin/index/index/key/d62eebeed3af7adc818bf69150475eb9a1d4988fec3418725e0d57b29226f525/'
 
     try:
@@ -74,7 +73,15 @@ def existing():
 
         # Optionally, wait for some time to observe the result
         time.sleep(5)
+        # Find the separator element
+        separator_element = driver.find_element(By.CLASS_NAME, "separator")
 
+        # Move to the separator element and perform the click action on the following 'Expand All' link
+        expand_all_link = separator_element.find_element(By.XPATH, "./following-sibling::a")
+
+        # Perform the click action
+        expand_all_link.click()
+        time.sleep(3)
         # Wait until the element is present (you may need to adjust the locator if necessary)
         wait = WebDriverWait(driver, 10)
         elementc = wait.until(EC.presence_of_element_located((By.XPATH, f"//span[contains(text(), '{cat_id}')]")))
@@ -268,8 +275,8 @@ def new():
     driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
     lines = 200
     cat_id = campaign_entry.get() #'Pay Day Offer (ID: 1775) (215)'
-    userid = 'rohit.vijay@eyewa.com'
-    password = 'MRj!k7S8j&dXzX9X'
+    userid = user_entry.get()
+    password = password_entry.get()
     link = r'https://adm.eyewa.com/eyewa_adminpanel/admin/index/index/key/d62eebeed3af7adc818bf69150475eb9a1d4988fec3418725e0d57b29226f525/'
     file_path = file_entry.get()
     workbook = openpyxl.load_workbook(file_path)
@@ -305,6 +312,16 @@ def new():
 
         # Optionally, wait for some time to observe the result
         time.sleep(5)
+
+        # Find the separator element
+        separator_element = driver.find_element(By.CLASS_NAME, "separator")
+
+        # Move to the separator element and perform the click action on the following 'Expand All' link
+        expand_all_link = separator_element.find_element(By.XPATH, "./following-sibling::a")
+
+        # Perform the click action
+        expand_all_link.click()
+        time.sleep(3)
 
         # Wait until the element is present (you may need to adjust the locator if necessary)
         wait = WebDriverWait(driver, 10)
@@ -497,7 +514,14 @@ def ranking(driver, file_path):
         last_row = sheet.max_row
         # Counter for activities after every 20 loops
         loop_counter = 0
-                for row_idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True),
+        wait = WebDriverWait(driver, 10)
+        dropdown = wait.until(
+            EC.presence_of_element_located((By.ID, "catalog_category_products_page-limit")))
+
+        select = Select(dropdown)
+        select.select_by_value("200")
+        time.sleep(2)
+        for row_idx, row in enumerate(sheet.iter_rows(min_row=2, values_only=True),
                                       start=2):  # min_row=2 to skip the header row
             SKU = row[0]  # Assuming 'SKU' is the first column
             Rank = row[1]  # Assuming 'Ranking' is the second column
@@ -517,6 +541,13 @@ def ranking(driver, file_path):
             input_elements.send_keys(Keys.ENTER)
             time.sleep(2)
             try:
+                # wait = WebDriverWait(driver, 10)
+                # dropdown = wait.until(
+                #     EC.presence_of_element_located((By.ID, "catalog_category_products_page-limit")))
+                #
+                # select = Select(dropdown)
+                # select.select_by_value("200")
+                # time.sleep(2)
                 # Locate the table containing the results
                 table = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.ID, 'catalog_category_products_table'))
@@ -524,7 +555,7 @@ def ranking(driver, file_path):
 
                 # Iterate over the rows to find the exact SKU match
                 rows = table.find_elements(By.XPATH, ".//tbody/tr")
-                a = len(row)
+                a = len(rows)
                 sku_found = False
                 for tr in rows:
                     # Find the SKU cell in the current row
@@ -545,6 +576,7 @@ def ranking(driver, file_path):
 
                 if not sku_found:
                     comment = "Exact SKU not found"
+
             except NoSuchElementException as ex:
 
                 print(f"NoSuchElementException: {ex}")
@@ -585,6 +617,15 @@ def ranking(driver, file_path):
 
                     # Click the strong element
                     strong_element.click()
+                    time.sleep(2)
+                    wait = WebDriverWait(driver, 10)
+                    dropdown = wait.until(
+                        EC.presence_of_element_located((By.ID, "catalog_category_products_page-limit")))
+
+                    select = Select(dropdown)
+                    select.select_by_value("200")
+                    time.sleep(2)
+
 
                 finally:
                     # Close the WebDriver after some time
@@ -630,8 +671,13 @@ root.geometry(f"{screen_width}x{screen_height}")
 
 user_label = tk.Label(root, text="User name:")
 user_label.place(x=10, y=50)
-user_entry = tk.Entry(root, width=20)
+user_entry = tk.Entry(root, width=30)
 user_entry.place(x=70, y=50)
+
+password_label = tk.Label(root, text="password")
+password_label.place(x=10, y=75)
+password_entry = tk.Entry(root, width=30)
+password_entry.place(x=70, y=75)
 
 # Select Files
 file_label = tk.Label(root, text="Select File:")
