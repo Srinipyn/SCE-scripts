@@ -1,0 +1,273 @@
+Sub house_keeping()
+
+  Dim currentSht As Worksheet
+  Dim colName As String
+  Dim i As Long, lastCol As Long
+  Dim hasDuplicates As Boolean
+  Dim dataRange As Range
+  Dim foundDuplicates As Long
+  Dim dateOnly As String
+  Dim dateString As String
+
+  
+  'track code
+'------------
+Dim rs As ADODB.Recordset
+    Dim sql As String
+    Dim ID As String
+    Dim Price As Double
+    Dim Stock As Integer
+    Dim computerName As String
+    
+    Dim conn As Object
+    
+    
+    Dim serverName As String
+    Dim port As String
+    Dim database As String
+    Dim Usernameq As String
+    Dim passwordq As String
+    Dim ju
+    Dim Nameq
+    Dim currentDate
+    Dim nowDate
+    Dim process_name
+    
+    ' Set the connection parameters
+    serverName = ""
+    port = ""
+    database = ""
+    Usernameq = ""
+    passwordq = ""
+    
+    ' Construct the connection string
+    Dim connectionString As String
+    connectionString = "Driver={SQL Server};Server=" & serverName & "," & port & ";Database=" & database & ";Uid=" & Usernameq & ";Pwd=" & passwordq & ";"
+    Set conn = CreateObject("ADODB.Connection")
+    ' Open the connection
+    conn.Open connectionString
+    
+    Set rs = New ADODB.Recordset
+    
+    'assuming the IDs are in column A, and prices and stocks in columns B and C respectively
+    'and the data starts from row 2
+    
+    
+    ju = 1
+    'MPDB = Sheets("Search and update").Cells(10, 16).Value
+    
+        
+        Nameq = "Channel Marketing"
+        currentDate = Now
+        nowDate = format(currentDate, "yyyy-mm-dd hh:mm:ss")
+        computerName = Environ("COMPUTERNAME")
+        process_name = "House Keeping Report"
+        sql = "INSERT INTO [dbo].[Automation_usage](Date,user_name,process_name,count,system_id) VALUES " & _
+             "('" & nowDate & "','" & Nameq & "','" & process_name & "','" & ju & "','" & computerName & "')"
+        
+        rs.Open sql, conn
+    
+     If rs.State = adStateOpen Then
+            rs.Close
+        End If
+    
+   
+     conn.Close
+     Set rs = Nothing
+     Set conn = Nothing
+
+
+ 
+'------------
+  Dim fd As FileDialog
+  Dim selectedFile As Variant
+
+  ' Create a FileDialog object as a FilePicker dialog box
+    Set fd = Application.FileDialog(msoFileDialogFilePicker)
+    
+    ' Show the File Picker dialog box and check if the user picked a file
+    If fd.Show = -1 Then
+        ' Display the path of the selected file in a message box
+        MsgBox "Selected file: " & fd.SelectedItems(1)
+        
+        ' Alternatively, you can assign the selected file path to a variable
+        selectedFile = fd.SelectedItems(1)
+        
+        ' Now you can use the 'selectedFile' variable to work with the selected file path
+        ' For example, open the file
+        ' workbooks.Open selectedFile
+    Else
+        ' User clicked Cancel
+        MsgBox "No file selected."
+    End If
+    
+  ' Set the worksheet and column name (replace "Sheet1" and "ColumnToDelete" with your values)
+  Set currentSht = ThisWorkbook.Worksheets("Sheet1")
+  colName = "ITEM_STYLE"
+  currentSht.Activate
+
+  ' Get the last column
+  lastCol = currentSht.Cells(5, Columns.Count).End(xlToLeft).Column
+
+  ' Loop through columns in reverse order to avoid shifting references
+  With currentSht
+    For i = lastCol To 1 Step -1
+      If .Cells(5, i).value = colName Then
+      
+        ' Delete the column
+        Columns(i).EntireColumn.Delete
+        Exit For ' Exit the loop after finding the matching column
+      End If
+      
+    Next i
+  End With
+  colName1 = "ITEM_SIZE"
+  colNum1 = GetColumnNumberByName(LCase(colName1))
+  colName2 = "ShelfLifeDaysPromised"
+  colNum2 = GetColumnNumberByName(LCase(colName2))
+  
+   ' Get the last row of the data range
+  lastRow = Sheets("Sheet1").Cells(Rows.Count, 1).End(xlUp).Row
+  
+   'Loop through rows in the data range
+  With currentSht
+    For i = lastRow To 5 Step -1 ' Start from last row, iterate upwards (avoid shifting references)
+      If LCase(currentSht.Cells(i, colNum1).value) = LCase("Mother & Baby") Or LCase(currentSht.Cells(i, colNum1).value) = LCase("Baby & Child") Then ' Check if value matches
+        .Rows(i).EntireRow.Delete ' Delete the row if there's a match
+      End If
+    Next i
+  End With
+  
+  
+    'Loop through rows in the data range
+  With currentSht
+    For i = lastRow To 5 Step -1 ' Start from last row, iterate upwards (avoid shifting references)
+      If currentSht.Cells(i, colNum2).value = 0 Or currentSht.Cells(i, colNum2).value = 30 Then ' Check if value matches
+        .Rows(i).EntireRow.Delete ' Delete the row if there's a match
+      End If
+    Next i
+  End With
+  
+'duplicate removal
+  colName3 = "ITEM"
+  colNum3 = GetColumnNumberByName(LCase(colName3))
+  ' Loop through rows from top to bottom
+  For i = 5 To lastRow ' Start from row 2 (skip header if present)
+    foundDuplicates = 0 ' Reset counter for each row
+
+    ' Loop through rows below the current row to check for duplicates
+    For j = i + 1 To lastRow
+      If currentSht.Cells(i, colNum3).value = currentSht.Cells(j, colNum3).value Then
+        foundDuplicates = foundDuplicates + 1 ' Increment counter for each duplicate
+        Exit For ' Exit inner loop after finding a duplicate (efficiency)
+      End If
+      
+      
+    Next j
+
+    ' If more than 0 duplicates found, delete the current row
+    If foundDuplicates > 0 Then
+      currentSht.Rows(i).EntireRow.Delete
+      ' Adjust lastRow after deleting a row (optional)
+      i = i - 1
+      lastRow = lastRow - 1 ' Adjust if you need to maintain reference to the last row
+    
+    End If
+  Next i
+  
+ dateCol = "Expiry_date"
+ dateNum = GetColumnNumberByName(LCase(dateCol))
+
+' Loop through rows from top to bottom
+  For i = 6 To lastRow ' Start from row 5 (skip header)
+    ' Convert cell value to date
+    
+    dateString = currentSht.Cells(i, dateNum).value
+    ' Extract 10 characters (assuming consistent date format)
+    dateOnly = Left(dateString, 10)
+    
+    ' Attempt to convert extracted date string to a date
+  On Error Resume Next ' Handle potential conversion errors
+  extractedDate = CDate(dateOnly)
+  On Error GoTo 0
+
+    ' Check if date is in the past (considering both formats)
+    If IsDate(extractedDate) Then ' Check for valid date conversion
+      If extractedDate < Date Then ' Compare with today's date
+        currentSht.Rows(i).EntireRow.Delete
+        ' Adjust lastRow after deleting a row (optional)
+        lastRow = lastRow - 1 ' Adjust if you need to maintain reference to the last row
+      End If
+    End If
+  Next i
+  
+  
+currentSht.Range("A6" & ":" & "J" & lastRow).Select
+currentSht.Range("A6" & ":" & "J" & lastRow).Copy
+'workbooks.Open selectedFile
+
+Set newShtto = workbooks.Open(selectedFile)
+' Check if the worksheet exists before assigning it to newSht
+On Error Resume Next
+Set newSht = newShtto.Worksheets("SLG Amendment")
+On Error GoTo 0
+newSht.Activate
+lastRowa = newSht.Cells(Rows.Count, 2).End(xlUp).Row
+lastRowb = newSht.Cells(Rows.Count, 1).End(xlUp).Row
+newSht.Cells(lastRowa + 1, 2).PasteSpecial
+lastRowc = newSht.Cells(Rows.Count, 2).End(xlUp).Row
+
+
+' Loop through rows from top to bottom
+  For i = lastRowc To 2 Step -1 ' Loop backwards to safely delete rows '
+    foundDuplicates = 0 ' Reset counter for each row
+
+    ' Loop through rows below the current row to check for duplicates
+    For j = i - 1 To 2 Step -1 ' Loop backwards to safely compare
+      If newSht.Cells(i, 3).value = newSht.Cells(j, 3).value Then
+        foundDuplicates = foundDuplicates + 1 ' Increment counter for each duplicate
+        Exit For ' Exit inner loop after finding a duplicate (efficiency)
+      End If
+      
+      
+    Next j
+
+    ' If more than 0 duplicates found, delete the current row
+    If foundDuplicates > 0 Then
+      newSht.Rows(i).EntireRow.Delete
+      ' Adjust lastRow after deleting a row (optional)
+      i = i + 1
+      lastRow = lastRow - 1 ' Adjust if you need to maintain reference to the last row
+    
+    End If
+  Next i
+lastRowc = newSht.Cells(Rows.Count, 2).End(xlUp).Row
+For h = lastRowb + 1 To lastRowc
+
+newSht.Cells(h, 1) = Date
+
+Next h
+  
+MsgBox "done"
+End Sub
+
+Function GetColumnNumberByName(colName As String) As Long
+
+  Dim currentSht As Worksheet
+
+  ' Set the worksheet (replace "Sheet1" with your actual worksheet name)
+  Set currentSht = ThisWorkbook.Worksheets("Sheet1")
+
+  ' Loop through columns
+  For i = 1 To currentSht.Cells(5, Columns.Count).End(xlToLeft).Column ' Loop until last column
+    If LCase(currentSht.Cells(5, i).value) = colName Then ' Check if value in first row matches column name
+      GetColumnNumberByName = i ' Return the column number if there's a match
+      Exit Function ' Exit the function after finding the matching column
+    End If
+  Next i
+
+  ' If no matching column found, return 0 (optional)
+  GetColumnNumberByName = 0
+
+End Function
+
