@@ -79,27 +79,7 @@ Dim rs As ADODB.Recordset
 
  
 '------------
-  Dim fd As FileDialog
-  Dim selectedFile As Variant
 
-  ' Create a FileDialog object as a FilePicker dialog box
-    Set fd = Application.FileDialog(msoFileDialogFilePicker)
-    
-    ' Show the File Picker dialog box and check if the user picked a file
-    If fd.Show = -1 Then
-        ' Display the path of the selected file in a message box
-        MsgBox "Selected file: " & fd.SelectedItems(1)
-        
-        ' Alternatively, you can assign the selected file path to a variable
-        selectedFile = fd.SelectedItems(1)
-        
-        ' Now you can use the 'selectedFile' variable to work with the selected file path
-        ' For example, open the file
-        ' workbooks.Open selectedFile
-    Else
-        ' User clicked Cancel
-        MsgBox "No file selected."
-    End If
     
   ' Set the worksheet and column name (replace "Sheet1" and "ColumnToDelete" with your values)
   Set currentSht = ThisWorkbook.Worksheets("Sheet1")
@@ -183,27 +163,66 @@ Dim rs As ADODB.Recordset
     ' Convert cell value to date
     
     dateString = currentSht.Cells(i, dateNum).value
+    'dateStringa = Replace(dateString, "-", "/")
     ' Extract 10 characters (assuming consistent date format)
-    dateOnly = Left(dateString, 10)
+    dateOnly = Trim(Left(dateString, 10))
+    ' Normalize the date string to mm-dd-yyyy format
+        dateOnly = NormalizeDateFormat(dateOnly)
     
+  validDate = IsDate(dateOnly) And CheckDateFormat(dateOnly)
     ' Attempt to convert extracted date string to a date
   On Error Resume Next ' Handle potential conversion errors
-  extractedDate = CDate(dateOnly)
+  extractedDate = dateOnly
   On Error GoTo 0
 
     ' Check if date is in the past (considering both formats)
-    If IsDate(extractedDate) Then ' Check for valid date conversion
-      If extractedDate < Date Then ' Compare with today's date
+    'If IsDate(validDate) Then ' Check for valid date conversion
+    
+    
+    formattedTodayDate = format(Date, "mm-dd-yyyy")
+      If extractedDate < formattedTodayDate Then ' Compare with today's date
         currentSht.Rows(i).EntireRow.Delete
         ' Adjust lastRow after deleting a row (optional)
         lastRow = lastRow - 1 ' Adjust if you need to maintain reference to the last row
       End If
-    End If
+    'End If
   Next i
   
-  
+End Sub
+
+Sub send_to_main_sheet()
+
+Dim house_keeping As Workbook
+Set house_keeping = workbooks("house_keeping.xlsm")
+Set currentSht = house_keeping.Worksheets("Sheet1")
+
+lastRow = Sheets("Sheet1").Cells(Rows.Count, 1).End(xlUp).Row
 currentSht.Range("A6" & ":" & "J" & lastRow).Select
 currentSht.Range("A6" & ":" & "J" & lastRow).Copy
+  
+  Dim fd As FileDialog
+  Dim selectedFile As Variant
+
+  ' Create a FileDialog object as a FilePicker dialog box
+    Set fd = Application.FileDialog(msoFileDialogFilePicker)
+    
+    ' Show the File Picker dialog box and check if the user picked a file
+    If fd.Show = -1 Then
+        ' Display the path of the selected file in a message box
+        MsgBox "Selected file: " & fd.SelectedItems(1)
+        
+        ' Alternatively, you can assign the selected file path to a variable
+        selectedFile = fd.SelectedItems(1)
+        currentSht.Cells(1, 13).value = selectedFile
+    
+        ' Now you can use the 'selectedFile' variable to work with the selected file path
+        ' For example, open the file
+        ' workbooks.Open selectedFile
+    Else
+        ' User clicked Cancel
+        MsgBox "No file selected."
+    End If
+
 'workbooks.Open selectedFile
 
 Set newShtto = workbooks.Open(selectedFile)
@@ -215,11 +234,37 @@ newSht.Activate
 lastRowa = newSht.Cells(Rows.Count, 2).End(xlUp).Row
 lastRowb = newSht.Cells(Rows.Count, 1).End(xlUp).Row
 newSht.Cells(lastRowa + 1, 2).PasteSpecial
-lastRowc = newSht.Cells(Rows.Count, 2).End(xlUp).Row
 
+lastRowc = newSht.Cells(Rows.Count, 2).End(xlUp).Row
+    
+   
+    newSht.Columns("C:C").Select
+    ' Define the range to check for duplicates
+   Selection.FormatConditions.AddUniqueValues
+    Selection.FormatConditions(Selection.FormatConditions.Count).SetFirstPriority
+    Selection.FormatConditions(1).DupeUnique = xlDuplicate
+    With Selection.FormatConditions(1).Font
+        .Color = -16383844
+        .TintAndShade = 0
+    End With
+    With Selection.FormatConditions(1).Interior
+        .PatternColorIndex = xlAutomatic
+        .Color = 13551615
+        .TintAndShade = 0
+    End With
+
+End Sub
+
+Sub remove_duplicate()
+
+Path = ActiveSheet.Cells(1, 13).value
+Set newShtto = workbooks.Open(Path)
+Set newSht = newShtto.Worksheets("SLG Amendment")
+lastRowa = newSht.Cells(Rows.Count, 3).End(xlUp).Row
+lastRowb = newSht.Cells(Rows.Count, 1).End(xlUp).Row
 
 ' Loop through rows from top to bottom
-  For i = lastRowc To 2 Step -1 ' Loop backwards to safely delete rows '
+  For i = lastRowa To 2 Step -1 ' Loop backwards to safely delete rows '
     foundDuplicates = 0 ' Reset counter for each row
 
     ' Loop through rows below the current row to check for duplicates
@@ -247,7 +292,9 @@ For h = lastRowb + 1 To lastRowc
 newSht.Cells(h, 1) = Date
 
 Next h
-  
+workbooks("house_keeping").Activate
+Sheets("Sheet1").Cells(1, 13).ClearContents
+workbooks("house_keeping").Save
 MsgBox "done"
 End Sub
 
@@ -271,3 +318,69 @@ Function GetColumnNumberByName(colName As String) As Long
 
 End Function
 
+Function NormalizeDateFormat(dateStr As String) As String
+    Dim dateParts() As String
+    Dim monthPart As String
+    Dim dayPart As String
+    Dim yearPart As String
+    
+    ' Replace "-" with "/" for uniform splitting
+    dateStr = Replace(dateStr, "/", "-")
+    
+    ' Split the date string by the slash delimiter
+    dateParts = Split(dateStr, "-")
+    
+    ' Extract month, day, and year parts
+    monthPart = dateParts(0)
+    dayPart = dateParts(1)
+    yearPart = dateParts(2)
+    
+    ' Pad single digit month and day with leading zeros
+    If Len(monthPart) = 1 Then monthPart = "0" & monthPart
+    If Len(dayPart) = 1 Then dayPart = "0" & dayPart
+    
+    ' Reconstruct the date string in mm/dd/yyyy format
+    NormalizeDateFormat = monthPart & "-" & dayPart & "-" & yearPart
+End Function
+
+Function CheckDateFormat(dateStr As String) As Boolean
+    Dim dateParts() As String
+    Dim monthPart As String
+    Dim dayPart As String
+    Dim yearPart As String
+    
+    ' Split the date string by the slash delimiter
+    dateParts = Split(dateStr, "/")
+    
+    ' Check the parts count to ensure it has three parts (MM/DD/YYYY)
+    If UBound(dateParts) <> 2 Then
+        CheckDateFormat = False
+        Exit Function
+    End If
+    
+    ' Extract month, day, and year parts
+    monthPart = dateParts(0)
+    dayPart = dateParts(1)
+    yearPart = dateParts(2)
+    
+    ' Check if the year part is four digits
+    If Len(yearPart) <> 4 Then
+        CheckDateFormat = False
+        Exit Function
+    End If
+    
+    ' Check if the month part is one or two digits
+    If Len(monthPart) < 1 Or Len(monthPart) > 2 Then
+        CheckDateFormat = False
+        Exit Function
+    End If
+    
+    ' Check if the day part is one or two digits
+    If Len(dayPart) < 1 Or Len(dayPart) > 2 Then
+        CheckDateFormat = False
+        Exit Function
+    End If
+    
+    ' If all checks passed, the date format is valid
+    CheckDateFormat = True
+End Function
