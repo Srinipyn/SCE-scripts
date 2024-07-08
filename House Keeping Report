@@ -12,6 +12,7 @@ Sub house_keeping()
   
   'track code
 '------------
+
 Dim rs As ADODB.Recordset
     Dim sql As String
     Dim ID As String
@@ -75,7 +76,6 @@ Dim rs As ADODB.Recordset
      conn.Close
      Set rs = Nothing
      Set conn = Nothing
-
 
  
 '------------
@@ -193,7 +193,7 @@ End Sub
 Sub send_to_main_sheet()
 
 Dim house_keeping As Workbook
-Set house_keeping = workbooks("house_keeping.xlsm")
+Set house_keeping = workbooks("house_keeping_macro.xlsm")
 Set currentSht = house_keeping.Worksheets("Sheet1")
 
 lastRow = Sheets("Sheet1").Cells(Rows.Count, 1).End(xlUp).Row
@@ -292,9 +292,9 @@ For h = lastRowb + 1 To lastRowc
 newSht.Cells(h, 1) = Date
 
 Next h
-workbooks("house_keeping").Activate
+workbooks("house_keeping_macro").Activate
 Sheets("Sheet1").Cells(1, 13).ClearContents
-workbooks("house_keeping").Save
+workbooks("house_keeping_macro").Save
 MsgBox "done"
 End Sub
 
@@ -323,6 +323,12 @@ Function NormalizeDateFormat(dateStr As String) As String
     Dim monthPart As String
     Dim dayPart As String
     Dim yearPart As String
+    
+     ' If the dateStr is blank, do nothing
+    If Trim(dateStr) = "" Then
+        NormalizeDateFormat = ""
+        Exit Function
+    End If
     
     ' Replace "-" with "/" for uniform splitting
     dateStr = Replace(dateStr, "/", "-")
