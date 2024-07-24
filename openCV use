@@ -1,0 +1,103 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver import ActionChains
+from datetime import datetime
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
+import datetime
+import cv2
+import requests
+import numpy as np
+from PIL import Image
+
+
+def load_image_from_url(url):
+    """
+    Load an image from a URL and convert it to a grayscale OpenCV image.
+
+    Args:
+    - url (str): URL of the target image
+
+    Returns:
+    - np.ndarray: Grayscale OpenCV image
+    """
+    response = requests.get(url)
+    img = Image.open(BytesIO(response.content))
+    return cv2.cvtColor(np.array(img), cv2.COLOR_BGR2GRAY)
+def detect_and_match(reference_image_path, target_image_url):
+    """
+    Function to detect keypoints and match descriptors between a reference image and a target image.
+    Uses ORB feature detector and BFMatcher for matching.
+
+    Args:
+    - reference_image_path (str): Local file path of the reference image
+    - target_image_url (str): URL of the target image
+
+    Returns:
+    - bool: True if enough good matches are found (indicating a match), False otherwise
+    """
+    # Load the reference image
+    reference_image = cv2.imread(reference_image_path, cv2.IMREAD_GRAYSCALE)
+
+    # Load the target image from URL
+    target_image = load_image_from_url(target_image_url)
+
+    # Check if images are loaded properly
+    if reference_image is None or target_image is None:
+        print("Error loading images")
+        return False
+
+    # Create ORB detector
+    orb = cv2.ORB_create()
+
+    # Detect keypoints and compute descriptors
+    kp1, des1 = orb.detectAndCompute(reference_image, None)
+    kp2, des2 = orb.detectAndCompute(target_image, None)
+
+    # Create BFMatcher object
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+
+    # Match descriptors
+    matches = bf.match(des1, des2)
+
+    # Sort matches based on distance
+    matches = sorted(matches, key=lambda x: x.distance)
+
+    # Filter matches based on angle difference
+    good_matches = []
+    angle_threshold = 15  # Adjust this threshold based on your application
+
+    for match in matches:
+        # Get the keypoints for this match
+        kp1_point = kp1[match.queryIdx].pt
+        kp2_point = kp2[match.trainIdx].pt
+
+        # Calculate the angle between keypoints
+        angle_diff = np.abs(kp1_point[0] - kp2_point[0])
+
+        # Consider a match only if the angle difference is within threshold
+        if angle_diff <= angle_threshold:
+            good_matches.append(match)
+
+    # Define the number of good matches needed to consider it a match
+    good_matches_threshold = 100
+
+    if len(good_matches) > good_matches_threshold:
+        return True
+    else:
+        return False
+
+image_src = (link)
+reference_image_path = r"C:\Users\squar\Downloads\fu50518-spc-1518-56-001-56\glasses-spectus-1518-56-001-3.jpg"
+target_image_url = image_src
+results = detect_and_match(reference_image_path, target_image_url)
+if results:
+    print(results)
+  else:
+      print("Images are not a match.")
