@@ -1,0 +1,40 @@
+import fuzzywuzzy
+from fuzzywuzzy import process
+import pandas as pd
+
+# Read the first column of the Excel file into a list for list1
+excel_file_path_list1 = r"C:\Users\squar\Downloads\shopee cat.xlsx"
+list1_df = pd.read_excel(excel_file_path_list1, header=None)
+
+# Read the first column of the Excel file into a list for list2
+excel_file_path_list2 = r"C:\Users\squar\Downloads\Shopee SG ALL CATtest.xlsx"
+list2_df = pd.read_excel(excel_file_path_list2, header=None)
+
+result_data = []
+
+for sentence1 in list1_df[0]:
+    best_match = None
+    best_match_ratio = 0
+    best_match_data = None
+
+    for sentence2 in list2_df[0]:
+        ratio = fuzzywuzzy.fuzz.token_sort_ratio(sentence1, sentence2)
+        if ratio > best_match_ratio:
+            best_match_ratio = ratio
+            best_match = sentence2
+            best_match_index = list2_df[list2_df[0] == best_match].index[0]
+            best_match_data = list2_df.iloc[best_match_index, 1:].tolist()
+
+    if best_match:  # Match found
+        result_data.append([sentence1] + best_match_data + [best_match_ratio])
+
+# Create a DataFrame from the result_data list
+result_df = pd.DataFrame(result_data,
+                         columns=["Sentence 1"] + [f"Column {i + 2}" for i in range(len(best_match_data))] + [
+                             "Similarity Score"])
+
+# Export the result DataFrame to a new Excel file
+result_excel_path = r"C:\Users\squar\Downloads\reslt.xlsx"
+result_df.to_excel(result_excel_path, index=False)
+
+print("Results exported to:", result_excel_path)
