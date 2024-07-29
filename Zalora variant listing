@@ -1,0 +1,232 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver import ActionChains
+from datetime import datetime
+from selenium.webdriver.support.ui import Select
+import tkinter as tk
+from tkinter import messagebox
+from tkinter import font,filedialog
+import openpyxl
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
+import math
+import pymssql
+import datetime
+import time
+import os
+import socket
+from http.cookies import Morsel
+
+def add_size():
+    # Define the path to your Excel file
+    excel_file_path = file_entry.get()
+    # Load the workbook and select the active worksheet
+    wb = openpyxl.load_workbook(excel_file_path)
+    sheet1 = wb['Sheet1']
+    sheet2 = wb['Sheet2']
+    options = webdriver.ChromeOptions()
+
+    # Specify the path to the manually downloaded ChromeDriver
+    # chrome_driver_path = r"C:\Users\squar\.wdm\drivers\chromedriver\win64\127.0.6533.72\chromedriver-win32\chromedriver.exe"
+    driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+
+    # Initialize the WebDriver
+    # driver = webdriver.Chrome(service=ChromeService(executable_path=chrome_driver_path), options=options)
+    if checkbox_var1.get():
+       driver.get("https://sellercenter.zalora.sg/product")
+    if checkbox_var2.get():
+       driver.get("https://sellercenter.zalora.com.my/product")
+
+    email_id = user_entry.get()
+    password = password_entry.get()
+
+    try:
+        driver.maximize_window()
+        # Find the email input field by its name attribute
+        time.sleep(2)
+        wait = WebDriverWait(driver, 50)
+        email_input = wait.until(EC.presence_of_element_located((By.NAME, "email")))
+        time.sleep(2)
+        # Send the email ID to the input field
+        email_input.send_keys(email_id)
+
+        # Wait for the password input field to be present in the DOM
+        password_input = wait.until(EC.presence_of_element_located((By.NAME, "password")))
+        password_input.send_keys(password)
+        time.sleep(2)
+        login_button = driver.find_element(By.ID, "submit")
+        login_button.click()
+        time.sleep(5)
+
+        pname = user_entry.get()
+        server = ""
+        port = 1
+        database = ''
+        username = ''
+        password = ''
+
+        todaym = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        process_name = "Zalora variant listing"
+        count = 0
+        manual = 0
+        autoamtion = 0
+        system_id = socket.gethostname()
+        conn = pymssql.connect(server=server, user=username, password=password, database=database, port=port)
+        cursor = conn.cursor()
+        insert_query = "INSERT INTO [dbo].[Automation_usage] (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        data_to_insert = (todaym, pname, process_name, count, manual, autoamtion, system_id)
+        cursor.execute(insert_query, data_to_insert)
+        conn.commit()
+        processed = 0
+
+        start_row_sheet2 = 2
+        row_counter = start_row_sheet2
+        first_column_values = []
+        for row in sheet1.iter_rows(min_row=2, max_row=sheet1.max_row, min_col=1, max_col=1, values_only=True):
+            if row[0] is not None and row[0] not in first_column_values:
+                first_column_values.append(row[0])
+
+        for value in first_column_values:
+            print(f"Processing value {value}:")
+
+            # Wait for the input container to be present
+            input_container = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "omnibar-text-input-container")))
+            input_element = input_container.find_element(By.CLASS_NAME, "omnibar-text-input")
+            input_element.send_keys(value)
+            input_element.send_keys(Keys.ENTER)
+
+            time.sleep(2)
+            wait = WebDriverWait(driver, 50)
+            dropdown_toggle = wait.until(
+                EC.element_to_be_clickable((By.XPATH, "//a[@class='dropdown-toggle' and contains(@id, 'edit-drop-')]")))
+            dropdown_toggle.click()
+
+            time.sleep(2)
+            edit_details = wait.until(EC.element_to_be_clickable((By.LINK_TEXT, "Edit Details")))
+            edit_details.click()
+
+            time.sleep(2)
+            try:
+                tab_link = WebDriverWait(driver, 50).until(EC.element_to_be_clickable((By.ID, "show-variations")))
+                tab_link.click()
+            except:
+                print("Element not found or not clickable")
+
+            driver.execute_script("arguments[0].scrollIntoView();", tab_link)
+            time.sleep(1)
+            start_row_sheet2 = 2  # Adjust this based on where you want to start pasting in sheet2
+
+
+
+            for row in sheet1.iter_rows(min_row=2, max_row=sheet1.max_row, values_only=True):
+                if row[0] == value:
+                    psku, csku, size, price = row[:4]
+                    print(f"Processing row with csku: {csku} and size: '{size}'")
+
+                    add_variation_button = wait.until(EC.element_to_be_clickable((By.ID, "addVariationRow")))
+                    add_variation_button.click()
+
+                    variation_table = wait.until(EC.presence_of_element_located((By.ID, "variationTable")))
+                    variation_elements = variation_table.find_elements(By.CLASS_NAME, "variation")
+                    count = len(variation_elements) - 1
+
+                    dropdown = wait.until(EC.presence_of_element_located((By.ID, f"variations_{count}_variation")))
+                    select = Select(dropdown)
+
+                    options = dropdown.find_elements(By.TAG_NAME, 'option')
+                    for option in options:
+                        yt = f'{size}'
+                        print(yt)
+                        if option.text == yt and not option.get_attribute('disabled'):
+                            select.select_by_visible_text(yt)
+                            break
+                    else:
+                        print(f"Option '{size}' is not available or is disabled.")
+                        continue
+
+                    input_field = wait.until(EC.presence_of_element_located((By.NAME, f"variations[{count}][sku_seller]")))
+                    input_field.send_keys(csku)
+                    sheet2.cell(row=row_counter, column=1).value = csku
+                    row_counter += 1
+                    processed = processed + 1
+                    update_query = "UPDATE Automation_usage SET count = %s WHERE Date = %s and user_name= %s and process_name= %s and system_id=%s"
+                    update_to_insert = (processed, todaym, pname, process_name, system_id)
+                    cursor.execute(update_query, update_to_insert)
+                    conn.commit()
+            wb.save(excel_file_path)
+            preview_button = wait.until(EC.presence_of_element_located((By.ID, "product-form-submit-btn")))
+            driver.execute_script("arguments[0].scrollIntoView(true);", preview_button)
+            preview_button = wait.until(EC.element_to_be_clickable((By.ID, "product-form-submit-btn")))
+
+            # Uncomment the next line to actually click the "Preview" button
+            preview_button.click()
+
+            time.sleep(5)
+            criteria_element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".icon-remove.icon-white")))
+            criteria_element.click()
+
+
+
+    except Exception as e:
+        messagebox.showerror("Error", e)
+    finally:
+        driver.quit()
+        messagebox.showerror("status", "Done")
+
+def select_file():
+    file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.csv *.xls *.xlsx")])
+    file_entry.delete(0, tk.END)
+    file_entry.insert(tk.END, file_path)
+
+# Initialize the Tkinter window
+root = tk.Tk()
+root.title("Zalora variant listing")
+
+screen_width = 500
+screen_height = 500
+
+# Set the window size
+root.geometry(f"{screen_width}x{screen_height}")
+
+
+user_label = tk.Label(root, text="User name:")
+user_label.place(x=10, y=50)
+user_entry = tk.Entry(root, width=30)
+user_entry.place(x=70, y=50)
+
+password_label = tk.Label(root, text="password")
+password_label.place(x=10, y=75)
+password_entry = tk.Entry(root, width=30)
+password_entry.place(x=70, y=75)
+
+# Select Files
+file_label = tk.Label(root, text="Select File:")
+file_label.place(x=10, y=100)
+file_entry = tk.Entry(root, width=40)
+file_entry.place(x=70, y=100)
+file_button = tk.Button(root, text="Browse", command=select_file)  # select_file
+file_button.place(x=350, y=95)
+
+# Create variables to track the state of the checkboxes
+checkbox_var1 = tk.BooleanVar()
+checkbox_var2 = tk.BooleanVar()
+
+# Create and place the first checkbox with a link in the text
+checkbox1 = tk.Checkbutton(root, text="SG", variable=checkbox_var1)
+checkbox1.place(x=60, y=170)
+
+# Create and place the second checkbox with a link in the text
+checkbox2 = tk.Checkbutton(root, text="MY", variable=checkbox_var2)
+checkbox2.place(x=100, y=170)
+
+# Create and place the button
+button = tk.Button(root, text="Process", command=add_size)
+button.place(x=100, y=220)
+
+# Run the Tkinter event loop
+root.mainloop()
