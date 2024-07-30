@@ -70,7 +70,7 @@ def replace_first_image():
 
         pname = user_entry.get()
         server = ""
-        port =
+        port = 19219
         database = ''
         username = ''
         password = ''
@@ -224,10 +224,10 @@ def replace_first_image():
 
 
 
-            # save_button = WebDriverWait(driver, 50).until(
-            #     EC.element_to_be_clickable((By.ID, "save-button")))
-            # # Click the Save button
-            # save_button.click()
+            save_button = WebDriverWait(driver, 50).until(
+                EC.element_to_be_clickable((By.ID, "save-button")))
+            # Click the Save button
+            save_button.click()
             time.sleep(5)
 
             WebDriverWait(driver, 50).until(
