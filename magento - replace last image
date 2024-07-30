@@ -70,7 +70,7 @@ def replace_first_image():
 
         pname = user_entry.get()
         server = ""
-        port = 
+        port =
         database = ''
         username = ''
         password = ''
@@ -140,6 +140,33 @@ def replace_first_image():
 
             time.sleep(7)
             # Locate the div with the unique data-index="gallery"
+            gallery_div = WebDriverWait(driver, 50).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-index="gallery"]'))
+            )
+
+            wait = WebDriverWait(driver, 10)
+            button = wait.until(EC.presence_of_element_located((By.ID, "store-change-button")))
+
+            # Check if the button's text contains "All Store Views"
+            if "All Store Views" not in button.text:
+                # Open the dropdown
+                ActionChains(driver).move_to_element(button).click().perform()
+
+                # Wait for the dropdown options to be present
+                wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".dropdown-menu")))
+                time.sleep(1)
+                # Find the option "All Store Views" and click it
+                all_store_views_option = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "store-switcher-all")))
+                all_store_views_option.click()
+                wait = WebDriverWait(driver, 10)
+                ok_button = wait.until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, ".action-primary.action-accept[data-role='action']")))
+
+                # Click the button
+                ok_button.click()
+
+                # Optionally, wait a bit for the scroll to complete
+            time.sleep(3)
             gallery_div = WebDriverWait(driver, 50).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-index="gallery"]'))
             )
