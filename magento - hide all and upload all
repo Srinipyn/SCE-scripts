@@ -36,8 +36,8 @@ def hide_existing_add_new():
     workbook = openpyxl.load_workbook(file_path)
     sheet = workbook.active
     last_row = sheet.max_row
-    userid = user_entry.get()  # 
-    password = password_entry.get()  # 
+    userid = user_entry.get()  #
+    password = password_entry.get()  #
     link = r'https://adm.eyewa.com/eyewa_adminpanel/admin/index/index/key/d62eebeed3af7adc818bf69150475eb9a1d4988fec3418725e0d57b29226f525/'
 
     try:
@@ -69,7 +69,7 @@ def hide_existing_add_new():
 
         pname = userid
         server = ""
-        port =
+        port = 19219
         database = ''
         username = ''
         password = ''
@@ -158,7 +158,8 @@ def hide_existing_add_new():
                 all_store_views_option = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "store-switcher-all")))
                 all_store_views_option.click()
                 wait = WebDriverWait(driver, 10)
-                ok_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".action-primary.action-accept[data-role='action']")))
+                ok_button = wait.until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, ".action-primary.action-accept[data-role='action']")))
 
                 # Click the button
                 ok_button.click()
@@ -170,7 +171,6 @@ def hide_existing_add_new():
             )
             time.sleep(7)
             # Scroll the div into view
-
 
             # Locate the div with the unique data-index="gallery" and then click the fieldset title within it
             fieldset_title = WebDriverWait(gallery_div, 50).until(
@@ -186,9 +186,9 @@ def hide_existing_add_new():
             # Locate all product-image-wrapper elements
 
             image_wrappers = WebDriverWait(driver, 50).until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, '.image.item:not(.hidden-for-front) .product-image'))
+                EC.presence_of_all_elements_located(
+                    (By.CSS_SELECTOR, '.image.item:not(.hidden-for-front) .product-image'))
             )
-
 
             print("Drag and drop operation performed successfully.")
 
@@ -199,7 +199,8 @@ def hide_existing_add_new():
                 driver.execute_script("arguments[0].click();", image_wrapper)
 
                 # Locate the checkbox element
-                checkbox = WebDriverWait(driver, 50).until(EC.presence_of_element_located((By.ID, 'hide-from-product-page')))
+                checkbox = WebDriverWait(driver, 50).until(
+                    EC.presence_of_element_located((By.ID, 'hide-from-product-page')))
                 time.sleep(3)
                 # Check if the checkbox is checked, and if not, click it
                 if not checkbox.is_selected():
@@ -209,7 +210,8 @@ def hide_existing_add_new():
                 time.sleep(3)
             folder_path = f"{folder_patha}\\{search_text}"
             # Get the list of relevant image files in the folder
-            image_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+            image_files = [f for f in os.listdir(folder_path) if
+                           f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
 
             # Total number of relevant image files
             total_images = len(image_files)
@@ -281,22 +283,22 @@ def hide_existing_add_new():
 
                 # Change the position values using JavaScript
                 driver.execute_script("""
-                            var target_element = arguments[0];
-                            var first_element = arguments[1];
-                            var parent = first_element.parentNode;
+                                    var target_element = arguments[0];
+                                    var first_element = arguments[1];
+                                    var parent = first_element.parentNode;
 
-                            // Swap positions
-                            var target_position_input = target_element.querySelector('.position');
-                            var first_position_input = first_element.querySelector('.position');
+                                    // Swap positions
+                                    var target_position_input = target_element.querySelector('.position');
+                                    var first_position_input = first_element.querySelector('.position');
 
-                            // Get current position values
-                            var temp = target_position_input.value;
-                            target_position_input.value = first_position_input.value;
-                            first_position_input.value = temp;
+                                    // Get current position values
+                                    var temp = target_position_input.value;
+                                    target_position_input.value = first_position_input.value;
+                                    first_position_input.value = temp;
 
-                            // Move target element before first element
-                            parent.insertBefore(target_element, first_element);
-                        """, target_image, first_image)
+                                    // Move target element before first element
+                                    parent.insertBefore(target_element, first_element);
+                                """, target_image, first_image)
 
                 # Wait for the DOM update to complete
                 time.sleep(1)
@@ -315,7 +317,7 @@ def hide_existing_add_new():
                     save_button = WebDriverWait(driver, 50).until(
                         EC.element_to_be_clickable((By.ID, "save-button")))
                     # Click the Save button
-                    # save_button.click()
+                    save_button.click()
                     time.sleep(5)
 
                     print("The order change as expected.")
