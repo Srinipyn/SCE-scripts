@@ -340,6 +340,8 @@ def hide_existing_add_new():
             update_to_insert = (processed, todaym, pname, process_name, system_id)
             cursor.execute(update_query, update_to_insert)
             conn.commit()
+            sheet.cell(row=row_number, column=4, value="Done")
+            workbook.save(input_path)
 
             # Optionally, wait to see the upload progress
 
