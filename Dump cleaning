@@ -1,0 +1,619 @@
+#latest
+import os
+import pandas as pd
+import openpyxl
+from urllib import request
+from tkinter import filedialog
+from tkinter.font import Font
+import tkinter as tk
+from tkinter import scrolledtext
+import re
+import pymssql
+import datetime
+from tkinter import *
+import socket
+from tkinter import font,filedialog
+import datetime
+from tkinter import ttk
+def select_file():
+    file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.csv *.xls *.xlsx")])
+    file_entry.delete(0, tk.END)
+    file_entry.insert(tk.END, file_path)
+
+def select_folder():
+    folder_path = filedialog.askdirectory()
+    folder_entry.delete(0, tk.END)
+    folder_entry.insert(tk.END, folder_path)
+
+#apparel
+def clean_data_apparel():
+
+    global formatted_detail1, index
+    file_path = file_entry.get()
+    if file_path.endswith('.csv'):
+        df = pd.read_csv(file_path, encoding='latin1')
+    else:
+        df = pd.read_excel(file_path)
+
+    # replacech = charecter_entry.get()
+    # unwanted_chars = [replacech]
+    unwanted_chars = ["Ã¢â€žÂ¢", "ÃƒÂ¢Ã‚Â®", "Ã‚Â®","â„¢","Â"," â€“,"]
+    replacement_char = ""  # Replace unwanted characters with an empty string
+
+
+    # Convert all columns to string data type
+    df = df.astype(str)
+
+    # Iterate through each column in the dataframe and perform the replacement
+    for col in df.columns:
+        for char in unwanted_chars:
+            df[col] = df[col].str.replace(char, replacement_char)
+
+
+    df.column_number1 = 0
+    df.column_number2 = 1
+
+    df.column_numberA = 3
+    df.column_numberB = 4
+    df.column_numberC = 5
+    df.column_numberD = 6
+    df.column_numberE = 7
+
+
+
+
+
+    total_rows = len(df)
+    progress_var = tk.DoubleVar()
+    progress_bar = ttk.Progressbar(root, variable=progress_var, maximum=total_rows)
+    progress_bar.place(x=300, y=420, width=300)
+    percentage_label = tk.Label(root, text="0%")
+    percentage_label.place(x=380, y=390, width=100)
+
+    for index, row in df.iterrows():
+        formatted_overview = ""
+        result = ""
+        formatted_data = ""
+        formatted_data3 = ""
+        formatted_datas = ""
+
+
+# Description replace \n with nothing
+        line2A = str(row[df.column_number2])
+        if line2A != 'nan':
+            lineaa = line2A.replace("\n", "")
+            lineaa = lineaa.rstrip(" ")
+            # line2 = line2A.replace(r"M&S Collection", "\n<b>M&S Collection<b>")
+            parts = lineaa.split(r"M&S Collection")
+            if len(parts) >= 2:
+                # Store the second part in a variable
+                first_part = parts[0]
+                first_part = first_part.rstrip(" ")
+
+                second_part = parts[1]
+                second_part = second_part.rstrip(" ")
+
+                linerte = str(row[df.column_number1])
+                linert = linerte[:3] + '/' + linerte[3:]
+
+                sentences = first_part.split(". ")
+                sentences = [sentence if sentence.endswith('.') else sentence + '.' for sentence in sentences]
+                formatted_overview = "\n\n- ".join(sentences).rstrip() + "\n"
+                formatted_overview = "Overview:\n\n- " + formatted_overview + "\nM&S Collection" + second_part
+                formatted_overview = formatted_overview + "\n\nProduct Style / Style number:" + linert
+                print(formatted_overview)
+                df.iloc[index, df.column_number2] = formatted_overview
+                first_part = ""
+                second_part = ""
+
+                print("Second part:", second_part)
+            else:
+                first_part = lineaa
+                linert = str(row[df.column_number1])
+
+                sentences = first_part.split(". ")
+                sentences = [sentence if sentence.endswith('.') else sentence + '.' for sentence in sentences]
+                formatted_overview = "\n\n- ".join(sentences).rstrip()
+                formatted_overview = "Overview:\n\n- " + formatted_overview
+                formatted_overview = formatted_overview + "\n\nProduct Style / Style number:" + linert + "."
+                print(formatted_overview)
+                df.iloc[index, df.column_number2] = formatted_overview
+                first_part = ""
+                second_part = ""
+                # If the value is blank, move to the next row or handle as needed
+                pass
+
+        # if lineaa:
+        #     linert = str(row[df.column_number1])
+        #
+        #     sentences = first_part.split(". ")
+        #     sentences = [sentence if sentence.endswith('.') else sentence + '.' for sentence in sentences]
+        #     formatted_overview = "\n\n- ".join(sentences).rstrip() + "\n"
+        #     formatted_overview = "Overview:\n\n- " + formatted_overview + "\nM&S Collection" + second_part
+        #     formatted_overview = formatted_overview + "\n\nProduct Style / Style number:" + linert
+        #     print(formatted_overview)
+        #     df.iloc[index, df.column_number2] = formatted_overview
+        #     first_part = ""
+        #     second_part = ""
+
+
+# Item Details:
+        linecdd = str(row[df.column_numberA])
+        if linecdd != 'nan':
+            linecd = linecdd.replace(":", ": ")
+            linec = linecd.replace("Item details#", "")
+            details_list = linec.split(";;;")
+            details_list = [sentence if sentence.endswith('.') else sentence + '.' for sentence in details_list]
+            formatted_details_list = []
+            for detail in details_list:
+                formatted_detail = "- " + detail.strip()
+                if formatted_detail.strip("- ").strip():
+                    print(formatted_detail)
+                    formatted_details_list.append(formatted_detail)
+            header = "Item Details:"
+            formatted_data1 = "\n\n".join(formatted_details_list)
+            result = "{}\n\n{}".format(header, formatted_data1)
+            df.iloc[index, df.column_numberA] = result
+
+# fit and style
+        input_string = str(row[df.column_numberB])
+        if input_string != 'nan':
+            # Remove "Style#" from the input_string
+            input_string = input_string.replace("<multisep/>", ";;;").strip()
+            input_string = input_string.replace("Style#Na;;;Na;;;Na;;;", "").strip()
+            input_string = input_string.replace("Style#Na;;;Na;;;Na", "").strip()
+            input_string = input_string.replace("Style#Na;;;Na;;;", "").strip()
+            input_string = input_string.replace("Style#Na;;;Na", "").strip()
+            input_string = input_string.replace("Style#Na;;;", "").strip()
+            input_string = input_string.replace("Style#Na", "").strip()
+            input_string = input_string.replace("Style#", "").strip()
+            input_string = input_string.replace(":", ": ")
+            if input_string != "":
+                # Split the input string into individual components
+                components = input_string.split(";;;")
+                components = [sentence if sentence.endswith('.') else sentence + '.' for sentence in components]
+                # Initialize an empty list to store the formatted components
+                formatted_components = []
+
+                # Process each component and add it to the formatted list with "-"
+                for component in components:
+                    formatted_component = "- " + component
+                    lower_case_component = formatted_component.lower()
+                    if formatted_component.strip("- ") and "na" not in lower_case_component:
+                        formatted_components.append(formatted_component)
+
+                # Create the final formatted data string
+                formatted_data = "Fit & Style:\n\n{}".format("\n\n".join(formatted_components))
+
+                # Print the formatted data
+                print(formatted_data)
+
+                # Update the dataframe cell with the formatted data
+                df.iloc[index, df.column_numberB] = formatted_data
+
+# Composition
+        # the line has to be in this format - "Care and composition#Composition#81% polyamide, 18% elastane and 1% cotton (exclusive of trimmings);;;Care instructions#Machine washable"
+        lineAt = str(row[df.column_numberC])
+        if lineAt != 'nan':
+
+            linecda = lineAt.replace("Care and composition#NA;;;", "Composition#")
+            linebdb = linecda.replace("Care and composition#;;;", "Composition#")
+            lineA = linebdb.replace("Care and composition#", "Composition#")
+
+
+            # Check if lineA is not empty and contains the required data
+            if lineA or "Composition#" in lineA:
+                lineA = lineA.replace(":", ": ")
+                sections = lineA.split(";;;")
+                sections = [sentence if sentence.endswith('.') else sentence + '.' for sentence in sections]
+                if len(sections) > 0 and "#" in sections[0]:
+                    if len(sections[0].split("#")) > 2:
+
+                        composition_data = sections[0].split("#")[2].replace("<multisep/>", ", ")
+                        formatted_data3 = "Material Composition / Fabric Details:\n\n- " + composition_data
+                        print(formatted_data3)
+                        df.iloc[index, df.column_numberC] = formatted_data3
+                    else:
+                        print("Error: Data in lineA does not match the expected format.")
+                else:
+                    print("Error: Data in lineA does not match the expected format.")
+
+            # care_instructions-need to replace tumble dry to ;;;tumble dry
+            lineB = str(row[df.column_numberC])
+
+            care_instructions_index = lineB.find("Care instructions#")
+
+            # If "Care instructions" data is found, extract the data after it
+            if care_instructions_index != 1:
+                care_instructions_data = lineB[care_instructions_index + len("Care instructions"):]
+
+                # Split the data by ";;;" to get individual instructions
+                care_instructions_data = care_instructions_data.replace("\n", "")
+                care_instructions_data = care_instructions_data.replace("#", " ")
+                care_instructions_data = care_instructions_data.replace(":", ": ")
+                care_instructions_data = care_instructions_data.replace(" .", ".")
+                care_instructions_list = care_instructions_data.split(";;;")
+
+                care_instructions_list = [sentence if sentence.endswith('.') else sentence + '.' for sentence in care_instructions_list]
+                cleaned_instructions = [instruction.strip() for instruction in care_instructions_list if
+                                        instruction.strip()]
+
+                # Format the data as required
+                formatted_datas = "Fabric Care Guide / Washing Instructions:\n\n"
+                formatted_datas += "\n\n".join("- " + instruction for instruction in cleaned_instructions)
+                df.iloc[index, df.column_numberD] = formatted_datas
+                print(formatted_datas)
+            else:
+                print("Care instructions data not found.")
+
+        description_parts = [
+            formatted_overview,
+            result,
+            formatted_data,
+            formatted_data3,
+            formatted_datas
+        ]
+
+        # Filter out empty strings
+        non_empty_parts = [part for part in description_parts if part.strip()]
+
+        # Join non-empty parts with newline characters
+        Final_Description = "\n\n".join(non_empty_parts)
+        df.iloc[index, df.column_numberE] = Final_Description
+
+        print(Final_Description)
+
+        progress_var.set(index + 1)
+        percentage_label.config(text=f"Progress: {index * (100 / total_rows):.2f}%")
+        root.update()
+    progress_bar.stop()  # Stop the progress bar
+    progress_bar.destroy()
+    percentage_label.config(text="Task Complete please wait few seconds to update")
+
+    pname = name_path.get()
+    column_name = "IDS"
+    unique_count = df[column_name].nunique()
+    server = ""
+    port = 19219
+    database = ""
+    username = ""
+    password = ""
+    todaym = datetime.datetime.now()
+    process_name = "Dump Data Cleaning"
+    count = unique_count
+    manual = 0
+    autoamtion = 0
+    system_id = socket.gethostname()
+    conn = pymssql.connect(server=server, user=username, password=password, database=database, port=port)
+    cursor = conn.cursor()
+    insert_query = "INSERT INTO [dbo].[Automation_usage] (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (todaym, pname, process_name, count, manual, autoamtion, system_id)
+    cursor.execute(insert_query, data_to_insert)
+    conn.commit()
+
+    dfolder = folder_entry.get()
+    downloads_folder = dfolder
+    output_path = os.path.join(downloads_folder, "output_apparel.xlsx")
+    df.to_excel(output_path, index=False)
+    percentage_label.destroy()
+    tk.messagebox.showinfo("Alert", "Clean up operation completed!")
+
+
+def clean_data_beauty():
+    global formatted_detail1, index
+    file_path = file_entry.get()
+    if file_path.endswith('.csv'):
+        df = pd.read_csv(file_path, encoding='latin1')
+    else:
+        df = pd.read_excel(file_path)
+
+    # replacech = charecter_entry.get()
+    # unwanted_chars = [replacech]
+    unwanted_chars = ["Ã¢â€žÂ¢", "ÃƒÂ¢Ã‚Â®", "Ã‚Â®"]
+    replacement_char = ""  # Replace unwanted characters with an empty string
+
+    # Convert all columns to string data type
+    df = df.astype(str)
+
+    # Iterate through each column in the dataframe and perform the replacement
+    for col in df.columns:
+        for char in unwanted_chars:
+            df[col] = df[col].str.replace(char, replacement_char)
+
+    # df.column_number0 = 1
+    df.column_number1 = 0
+    df.column_number2 = 1
+
+    df.column_numberA = 3
+    df.column_numberB = 4
+    df.column_numberC = 5
+    df.column_numberD = 6
+    df.column_numberE = 7
+    df.column_numberF = 8
+
+    total_rows = len(df)
+    progress_var = tk.DoubleVar()
+    progress_bar = ttk.Progressbar(root, variable=progress_var, maximum=total_rows)
+    progress_bar.place(x=300, y=420, width=300)
+    percentage_label = tk.Label(root, text="0%")
+    percentage_label.place(x=380, y=390, width=100)
+
+    # Title
+    for index, row in df.iterrows():
+        formatted_overview = ""
+        result = ""
+        formatted_data = ""
+        formatted_datai = ""
+        formatted_dataf = ""
+        formatted_dataa = ""
+
+        # liner = str(row[df.column_number1])
+        # if liner:
+        #     line1 = str(row[df.column_number0])  # Assuming you already have this line1 defined elsewhere
+        #     formatted_data2 = "M&S " + liner + " - " + line1
+        #     cleaned_data = formatted_data2.encode('latin1').decode('utf-8', 'ignore')
+        #     cleaned_data = cleaned_data.replace("â„¢", "")
+        #     print(cleaned_data)
+        #     df.iloc[index, df.column_number1] = cleaned_data
+        # else:
+        #     # If the value is blank, move to the next row or handle as needed
+        #     pass
+
+# Description
+        line2A = str(row[df.column_number2])
+        if line2A != 'nan':
+            linerte = str(row[df.column_number1])
+            linert = linerte[:3] + '/' + linerte[3:]
+            lineaa = line2A.rstrip(" ")
+            sentences = lineaa.split(". ")
+            sentences = [sentence if sentence.endswith('.') else sentence + '.' for sentence in sentences]
+            formatted_overview = "\n\n- ".join(sentences).rstrip(" ")
+            # formatted_overview = formatted_overview + "</p>"
+            formatted_overview = "Overview:\n\n- " + formatted_overview
+            formatted_overview = formatted_overview + "\n\nProduct Style / Style number:" + linert
+            print(formatted_overview)
+            df.iloc[index, df.column_number2] = formatted_overview
+
+ # More Information:
+        linecd = str(row[df.column_numberA])
+        if linecd != 'nan':
+            linec = linecd.replace("More information#", "")
+            linec = linec.replace(":", ": ")
+            details_list = linec.split(";;;")
+            details_list = [sentence if sentence.endswith('.') else sentence + '.' for sentence in details_list]
+            formatted_details_list = []
+            for detail in details_list:
+                formatted_detail = "- " + detail.strip()
+                if formatted_detail.strip("-").strip():
+                    print(formatted_detail)
+                    formatted_details_list.append(formatted_detail)
+            header = "More Information:"
+            formatted_data1 = "\n\n".join(formatted_details_list)
+            result = "{}\n\n{}".format(header, formatted_data1)
+            df.iloc[index, df.column_numberA] = result
+
+ # Ingredients:
+        input_string = str(row[df.column_numberB])
+        if input_string != 'nan':
+            # Remove "Style#" from the input_string
+            # input_string = input_string.replace("<multisep/>", ";;;").strip()
+            input_string = input_string.replace("Ingredients#", "").strip()
+            input_string = input_string.replace(":", ": ")
+
+            # Split the input string into individual components
+            components = input_string.split(";;;")
+            components = [sentence if sentence.endswith('.') else sentence + '.' for sentence in components]
+            # Initialize an empty list to store the formatted components
+            formatted_components = []
+
+            # Process each component and add it to the formatted list with "-"
+            for component in components:
+                formatted_component = "- " + component.strip()
+                # lower_case_component = formatted_component.lower()
+                if formatted_component.strip("- ").strip():
+                    formatted_components.append(formatted_component)
+
+            # Create the final formatted data string
+            formatted_data = "Ingredients:\n\n{}".format("\n\n".join(formatted_components))
+
+            # Print the formatted data
+            print(formatted_data)
+
+            # Update the dataframe cell with the formatted data
+            df.iloc[index, df.column_numberB] = formatted_data
+
+#care information
+        input_stringi = str(row[df.column_numberC])
+        if input_stringi != 'nan':
+            # Remove "Style#" from the input_string
+            # input_string = input_string.replace("<multisep/>", ";;;").strip()
+            input_stringi = input_stringi.replace("Care Insructions#", "").strip()
+            input_stringi = input_stringi.replace(":", ": ")
+
+            # Split the input string into individual components
+            componentsi = input_stringi.split(";;;")
+            componentsi = [sentence if sentence.endswith('.') else sentence + '.' for sentence in componentsi]
+            # Initialize an empty list to store the formatted components
+            formatted_componentsi = []
+
+            # Process each component and add it to the formatted list with "-"
+            for componenti in componentsi:
+                formatted_componenti = "-" + componenti.strip()
+                # lower_case_component = formatted_component.lower()
+                if formatted_componenti.strip("- ").strip():
+                    formatted_componentsi.append(formatted_componenti)
+
+            # Create the final formatted data string
+            formatted_datai = "Care Insructions: \n\n{}".format("\n\n".join(formatted_componentsi))
+
+            # Print the formatted data
+            print(formatted_datai)
+
+            # Update the dataframe cell with the formatted data
+            df.iloc[index, df.column_numberC] = formatted_datai
+
+# Features
+        # the line has to be in this format - "Care and composition#Composition#81% polyamide, 18% elastane and 1% cotton (exclusive of trimmings);;;Care instructions#Machine washable"
+        lineAt = str(row[df.column_numberD])
+        if lineAt != 'nan':
+            input_stringf = lineAt.replace("Features#", "").strip()
+            input_stringf = input_stringf.replace("<multisep/>", ";;;").strip()
+            input_stringf = input_stringf.replace(":", ": ")
+
+            # Split the input string into individual components
+            componentsf = input_stringf.split(";;;")
+            componentsf = [sentence if sentence.endswith('.') else sentence + '.' for sentence in componentsf]
+            # Initialize an empty list to store the formatted components
+            formatted_componentsf = []
+
+            # Process each component and add it to the formatted list with "-"
+            for componentf in componentsf:
+                formatted_componentf = "- " + componentf.strip()
+                # lower_case_component = formatted_component.lower()
+                if formatted_componentf.strip("- ").strip():
+                    formatted_componentsf.append(formatted_componentf)
+
+            # Create the final formatted data string
+            formatted_dataf = "Features:\n\n{}".format("\n\n".join(formatted_componentsf))
+
+            # Print the formatted data
+            print(formatted_dataf)
+
+            # Update the dataframe cell with the formatted data
+            df.iloc[index, df.column_numberD] = formatted_dataf
+
+# About the Range/item details
+        # the line has to be in this format - "Care and composition#Composition#81% polyamide, 18% elastane and 1% cotton (exclusive of trimmings);;;Care instructions#Machine washable"
+        lineAta = str(row[df.column_numberE])
+        if lineAta != 'nan':
+            input_stringa = lineAta.replace("About The Range#", "").strip()
+            input_stringa = input_stringa.replace("<multisep/>", ";;;").strip()
+            input_stringa = input_stringa.replace(":", ": ")
+            # Split the input string into individual components
+            componentsa = input_stringa.split(";;;")
+            componentsa = [sentence if sentence.endswith('.') else sentence + '.' for sentence in componentsa]
+            # Initialize an empty list to store the formatted components
+            formatted_componentsa = []
+
+            # Process each component and add it to the formatted list with "-"
+            for componenta in componentsa:
+                formatted_componenta = "- " + componenta.strip()
+                # lower_case_component = formatted_component.lower()
+                if formatted_componenta.strip("- ").strip():
+                    formatted_componentsa.append(formatted_componenta)
+
+            # Create the final formatted data string
+            formatted_dataa = "About the Range:\n\n{}".format("\n\n".join(formatted_componentsa))
+            df.iloc[index, df.column_numberE] = formatted_dataa
+            # Print the formatted data
+            print(formatted_dataa)
+
+        # List of variables to include in the final description
+        description_parts_b = [
+            formatted_overview,
+            result,
+            formatted_data,
+            formatted_datai,
+            formatted_dataf,
+            formatted_dataa,
+            formatted_datas
+        ]
+
+        # Filter out empty strings
+        non_empty_parts_b = [part for part in description_parts_b if part.strip()]
+
+        # Join non-empty parts with newline characters
+        Final_Descriptionb = "\n\n".join(non_empty_parts_b)
+
+        df.iloc[index, df.column_numberF] = Final_Descriptionb
+        print(Final_Descriptionb)
+        print(Final_Descriptionb)
+
+        progress_var.set(index + 1)
+        percentage_label.config(text=f"Progress: {index * (100 / total_rows):.2f}%")
+        root.update()
+    progress_bar.stop()  # Stop the progress bar
+    progress_bar.destroy()
+    percentage_label.config(text="Task Complete please wait few seconds to update")
+
+    pname = name_path.get()
+    column_name = "IDS"
+    unique_count = df[column_name].nunique()
+    server = ""
+    port = 19219
+    database = ""
+    username = ""
+    password = ""
+    todaym = datetime.datetime.now()
+    process_name = "Dump Data Cleaning"
+    count = unique_count
+    manual = 0
+    autoamtion = 0
+    system_id = socket.gethostname()
+    conn = pymssql.connect(server=server, user=username, password=password, database=database, port=port)
+    cursor = conn.cursor()
+    insert_query = "INSERT INTO [dbo].[Automation_usage] (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (todaym, pname, process_name, count, manual, autoamtion, system_id)
+    cursor.execute(insert_query, data_to_insert)
+    conn.commit()
+
+    dfolder = folder_entry.get()
+    downloads_folder = dfolder
+    output_path = os.path.join(downloads_folder, "output_BEAUTY.xlsx")
+    df.to_excel(output_path, index=False)
+    percentage_label.destroy()
+    tk.messagebox.showinfo("Alert", "Clean up operation completed!")
+
+root = tk.Tk()
+root.title("Squared Circle Business Tools")
+
+# Get the screen width and height
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight() - 10
+
+# Set the window size
+root.geometry(f"{screen_width}x{screen_height}")
+
+# Select Files
+file_label = tk.Label(root, text="Select File:")
+file_label.place(x=200, y=350)
+file_entry = tk.Entry(root, width=40)
+file_entry.place(x=350, y=350)
+file_button = tk.Button(root, text="Browse", command=select_file)#select_file
+file_button.place(x=600, y=350)
+#lone1
+
+# charecter_label = tk.Label(root, text="Unwanted Characters")
+# charecter_label.place(x=250, y=300)
+# charecter_entry = tk.Entry(root, width=40)
+# charecter_entry.place(x=400, y=300)
+
+file_label = tk.Label(root, text="Dump Data cleaning")
+file_label.place(x=200, y=80)
+bold_underline_font = font.Font(file_label, file_label.cget("font"))
+bold_underline_font.configure(weight="bold", underline=True)
+file_label.configure(font=bold_underline_font)
+
+file_label = tk.Label(root, text="1.Excel order format -IDS|Description|Product Style|Item Details|Fit & Style|Material Composition|Fabric Guide / Washing Instructions")
+file_label.place(x=50, y=100)
+
+# file_label = tk.Label(root, text="Select File:")
+# file_label.place(x=700, y=800)
+file_buttona = tk.Button(root, text="process apparel", command=clean_data_apparel)#select_file
+file_buttona.place(x=350, y=500)
+
+file_buttonb = tk.Button(root, text="process beauty", command=clean_data_beauty)#select_file
+file_buttonb.place(x=450, y=500)
+
+name = Label(root, text="Enter Username").place(x=300, y=260, anchor="e")
+name_path = Entry(root)
+name_path.place(x=350, y=250)
+
+
+folder = Label(root, text="Download path").place(x=300, y=300, anchor="e")
+folder_entry = Entry(root,width=40)
+folder_entry.place(x=350, y=300)
+Download_button = tk.Button(root, text="Browse", command=select_folder)#select folder
+Download_button.place(x=600, y=300)
+
+root.mainloop()
