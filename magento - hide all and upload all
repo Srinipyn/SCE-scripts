@@ -28,19 +28,20 @@ from PIL import Image
 import os
 
 def hide_existing_add_new():
-    # skus, path of the folders in for each sku
-    file_path = file_entry.get()
-
-    options = webdriver.ChromeOptions()  # hide image
-    driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
-    workbook = openpyxl.load_workbook(file_path)
-    sheet = workbook.active
-    last_row = sheet.max_row
-    userid = user_entry.get()  #
-    password = password_entry.get()  #
-    link = r'https://adm.eyewa.com/eyewa_adminpanel/admin/index/index/key/d62eebeed3af7adc818bf69150475eb9a1d4988fec3418725e0d57b29226f525/'
-
     try:
+        # skus, path of the folders in for each sku
+        file_path = file_entry.get()
+
+        options = webdriver.ChromeOptions()  # hide image
+        driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+        workbook = openpyxl.load_workbook(file_path)
+        sheet = workbook.active
+        last_row = sheet.max_row
+        userid = user_entry.get()  #
+        password = password_entry.get()  #
+        link = r'https://adm.eyewa.com/eyewa_adminpanel/admin/index/index/key/d62eebeed3af7adc818bf69150475eb9a1d4988fec3418725e0d57b29226f525/'
+
+
         driver.get(link)
         elementuser = driver.find_element(By.NAME, "login[username]")
         elementuser.send_keys(userid)
@@ -69,7 +70,7 @@ def hide_existing_add_new():
 
         pname = userid
         server = ""
-        port = 19219
+        port = 
         database = ''
         username = ''
         password = ''
@@ -222,8 +223,8 @@ def hide_existing_add_new():
             # Iterate over the image files
             for i, filename in enumerate(image_files):
                 file_input = driver.find_element(By.ID, 'fileupload')
-                file_path = os.path.join(folder_path, filename)
-                file_input.send_keys(file_path)
+                file_patha = os.path.join(folder_path, filename)
+                file_input.send_keys(file_patha)
 
                 # Check if it's the last iteration
                 if i == 0:
@@ -340,13 +341,13 @@ def hide_existing_add_new():
             update_to_insert = (processed, todaym, pname, process_name, system_id)
             cursor.execute(update_query, update_to_insert)
             conn.commit()
-            sheet.cell(row=row_number, column=4, value="Done")
-            workbook.save(input_path)
+            sheet.cell(row=row_number, column=3, value="Done")
+            workbook.save(file_path)
 
             # Optionally, wait to see the upload progress
 
     except Exception as e:
-        print("Error", e)
+        messagebox.showerror("Error", e)
 
     finally:
         pass
