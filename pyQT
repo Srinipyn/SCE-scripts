@@ -1,0 +1,97 @@
+import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QFileDialog, QMessageBox
+from PyQt5.QtGui import QPixmap, QFont
+import requests
+from io import BytesIO
+
+def select_file():
+    options = QFileDialog.Options()
+    file_path, _ = QFileDialog.getOpenFileName(
+        window,
+        "Select File",
+        "",
+        "Excel Files (*.csv *.xls *.xlsx);;All Files (*)",
+        options=options
+    )
+    if file_path:
+        file_entry.setText(file_path)
+
+def select_folder():
+    options = QFileDialog.Options()
+    folder_path = QFileDialog.getExistingDirectory(window, "Select Folder", options=options)
+    if folder_path:
+        folder_entry.setText(folder_path)
+
+def red_mart():
+    # Implement your red_mart functionality here
+    QMessageBox.information(window, "Info", "Red Mart functionality needs to be implemented.")
+
+# Initialize the application
+app = QApplication(sys.argv)
+
+# Create the main window
+window = QWidget()
+window.setWindowTitle('Squared Circle Business Tools')
+window.setGeometry(300, 300, 800, 600)  # Set window size and position
+window.setStyleSheet('background-color: #FFFFFF;')  # Set background color
+
+# Set up font
+font = QFont()
+font.setPointSize(12)
+
+# Image URL
+image_url = 'https://squaredcircle.in/wp-content/uploads/2022/04/cropped-logo.jpg'
+
+# Download the image
+response = requests.get(image_url)
+image_data = BytesIO(response.content)
+
+# Load the image into QPixmap
+image_pixmap = QPixmap()
+image_pixmap.loadFromData(image_data.read())
+
+# Add an image at the top
+image_label = QLabel(window)
+image_label.setPixmap(image_pixmap)
+image_label.setGeometry(50, 1, 200, 200)  # x, y, width, height
+
+# Data Cleaning Label
+data_cleaning_label = QLabel('Dump Data cleaning', window)
+data_cleaning_label.setGeometry(250, 50, 200, 30)  # x, y, width, height
+
+# File Label and Input
+file_label = QLabel('Select File:', window)
+file_label.setGeometry(50, 200, 100, 30)  # x, y, width, height
+
+file_entry = QLineEdit(window)
+file_entry.setGeometry(200, 200, 300, 30)  # x, y, width, height
+
+file_button = QPushButton('Browse', window)
+file_button.setGeometry(510, 200, 100, 30)  # x, y, width, height
+file_button.clicked.connect(select_file)
+
+# Folder Label and Input
+folder_label = QLabel('Download path:', window)
+folder_label.setGeometry(50, 250, 130, 30)  # x, y, width, height
+
+folder_entry = QLineEdit(window)
+folder_entry.setGeometry(200, 250, 300, 30)  # x, y, width, height
+
+download_button = QPushButton('Browse', window)
+download_button.setGeometry(510, 250, 100, 30)  # x, y, width, height
+download_button.clicked.connect(select_folder)
+
+# Info Label
+info_label = QLabel('1. Excel order format - IDS|Description|Product Style|Item Details|Fit & Style|Material Composition|Fabric Guide / Washing Instructions', window)
+info_label.setGeometry(50, 300, 700, 60)  # x, y, width, height
+
+# Submit Button
+submit_button = QPushButton('Submit', window)
+submit_button.setGeometry(350, 390, 100, 30)  # x, y, width, height
+submit_button.clicked.connect(red_mart)
+
+# Show the main window
+window.show()
+
+# Run the application's event loop
+sys.exit(app.exec_())
