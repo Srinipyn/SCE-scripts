@@ -23,6 +23,7 @@ def select_folder():
         folder_entry.setText(folder_path)
 
 def red_mart():
+    file_path = file_entry.text()
     # Implement your red_mart functionality here
     QMessageBox.information(window, "Info", "Red Mart functionality needs to be implemented.")
 
