@@ -198,7 +198,7 @@ def hide_existing_add_new():
             # Optionally, wait to see the upload progress
 
     except Exception as e:
-        print("Error", e)
+        messagebox.showerror("Error", e)
 
     finally:
         pass
