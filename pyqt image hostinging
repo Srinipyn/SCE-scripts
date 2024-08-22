@@ -1,0 +1,212 @@
+import sys
+import os
+import openpyxl
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QFileDialog, QLineEdit, QMessageBox
+from PyQt5.QtGui import QPixmap, QFont
+from PyQt5.QtCore import QThread, pyqtSignal, QTimer
+from urllib import request
+from io import BytesIO
+from PIL import Image, ImageQt
+from azure.storage.blob import BlobServiceClient, PublicAccess, ContentSettings
+import requests
+
+connection_string = ""
+
+
+def load_image_from_url(url):
+    try:
+        with request.urlopen(url) as response:
+            image_data = response.read()
+        image = Image.open(BytesIO(image_data))
+        image = image.resize((200, 100))
+        qt_image = ImageQt.ImageQt(image)
+        return QPixmap.fromImage(qt_image)
+    except Exception as e:
+        print(f"Error loading image from URL: {e}")
+        return QPixmap()
+
+
+def browse_local_folder(line_edit):
+    folder = QFileDialog.getExistingDirectory(None, "Select Local Folder")
+    if folder:
+        line_edit.setText(folder)
+
+
+def browse_download_folder(line_edit):
+    folder = QFileDialog.getExistingDirectory(None, "Select Download Folder")
+    if folder:
+        line_edit.setText(folder)
+
+
+class UploadThread(QThread):
+    update_status = pyqtSignal(str)
+    update_total_images = pyqtSignal(int)
+    upload_complete = pyqtSignal()
+
+    def __init__(self, local_path, container_name, download_path):
+        super().__init__()
+        self.local_path = local_path
+        self.container_name = container_name
+        self.download_path = download_path
+
+    def run(self):
+        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+        container_client = blob_service_client.get_container_client(self.container_name)
+
+        try:
+            container_client.create_container(public_access=PublicAccess.Blob)
+            print(f"Container '{self.container_name}' created with public access level 'blob' successfully.")
+        except Exception as e:
+            print(f"Container creation error: {e}")
+
+        total_images = len(os.listdir(self.local_path))
+        self.update_total_images.emit(total_images)
+        uploaded_images = 0
+
+        for filename in os.listdir(self.local_path):
+            blob_name = os.path.basename(filename)
+            blob_client = container_client.get_blob_client(blob_name)
+            content_settings = ContentSettings(content_type="image/jpeg")
+
+            try:
+                with open(os.path.join(self.local_path, filename), "rb") as data:
+                    blob_client.upload_blob(data, overwrite=True, content_settings=content_settings)
+                    uploaded_images += 1
+                    self.update_status.emit(f"Uploaded {uploaded_images} out of {total_images} images.")
+            except Exception as e:
+                print(f"Error uploading file '{filename}': {e}")
+                self.update_status.emit(f"Error uploading '{filename}'.")
+
+        blobs = container_client.list_blobs()
+        image_urls = [container_client.url + "/" + blob.name for blob in blobs]
+
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.title = 'URLs'
+
+        for index, url in enumerate(image_urls, start=1):
+            sheet.cell(row=index, column=1, value=url)
+
+        try:
+            file_path = os.path.join(self.download_path, f"{self.container_name}.xlsx")
+            workbook.save(file_path)
+            self.update_status.emit("Task completed")
+        except Exception as e:
+            QMessageBox.critical(None, "Error", f"An error occurred while saving the Excel file: {e}")
+
+        self.upload_complete.emit()
+
+
+class MainWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle("Squared Circle Image Hosting")
+        self.setGeometry(100, 100, 900, 600)
+
+        # Set up font
+        font = QFont()
+        font.setPointSize(12)
+
+        # Image URL
+        image_url = 'https://squaredcircle.in/wp-content/uploads/2022/04/cropped-logo.jpg'
+
+        # Download the image
+        try:
+            response = requests.get(image_url)
+            image_data = BytesIO(response.content)
+            image_pixmap = QPixmap()
+            image_pixmap.loadFromData(image_data.read())
+        except Exception as e:
+            print(f"Error loading image from URL: {e}")
+            image_pixmap = QPixmap()  # Default to an empty QPixmap
+
+        image_label = QLabel(self)
+        image_label.setPixmap(image_pixmap)
+        image_label.setGeometry(20, 20, 200, 100)
+
+        title_label = QLabel('Image Hosting', self)
+        title_label.setFont(QFont("Arial", 15, QFont.Bold))
+        title_label.setGeometry(270, 30, 200, 30)
+
+        description = QLabel(self)
+        description.setText(
+            "1.(Upload and create URL button) will upload and create image URL and give out the links in EXCEL\n"
+            "2.(Create URL) button creates image URLs for the images already uploaded and give out the links in EXCEL\n"
+            "3.Format to name the folder - Should be only lowercase letters, numbers, and hyphens and min 4 characters and do not use space\n"
+            "  e.g. 06-10-2023-ms-meanswear, ms-meanswear-06-10-2023"
+        )
+        description.setGeometry(20, 140, 860, 100)
+
+        # Upload label
+        local_path_label = QLabel(self)
+        local_path_label.setText('Upload Folder')
+        local_path_label.setGeometry(20, 260, 500, 30)
+
+        # Upload folder
+        self.local_path_edit = QLineEdit(self)
+        self.local_path_edit.setGeometry(100, 260, 500, 30)
+
+        # Upload folder button
+        browse_local_button = QPushButton('Browse', self)
+        browse_local_button.setGeometry(620, 260, 80, 30)
+        browse_local_button.clicked.connect(lambda: browse_local_folder(self.local_path_edit))
+
+        # Download path label
+        download_path_label = QLabel(self)
+        download_path_label.setText('Download Path')
+        download_path_label.setGeometry(20, 300, 500, 30)
+
+        # Download path
+        self.download_path_edit = QLineEdit(self)
+        self.download_path_edit.setGeometry(100, 300, 500, 30)
+
+        browse_download_button = QPushButton('Browse', self)
+        browse_download_button.setGeometry(620, 300, 80, 30)
+        browse_download_button.clicked.connect(lambda: browse_download_folder(self.download_path_edit))
+
+        container_name_label = QLabel(self)
+        container_name_label.setText('Folder Name')
+        container_name_label.setGeometry(20, 340, 500, 30)
+
+        # Container name
+        self.container_name_edit = QLineEdit(self)
+        self.container_name_edit.setGeometry(100, 340, 500, 30)
+
+        # Status labels
+        self.status_label = QLabel(self)
+        self.status_label.setGeometry(20, 440, 500, 30)
+
+        self.total_images_label = QLabel(self)
+        self.total_images_label.setGeometry(20, 480, 500, 30)
+
+        # Buttons
+        upload_button = QPushButton('Upload and create URL', self)
+        upload_button.setGeometry(250, 400, 200, 30)
+        upload_button.clicked.connect(self.start_upload)
+
+    def start_upload(self):
+        local_path = self.local_path_edit.text()
+        container_name = self.container_name_edit.text()
+        download_path = self.download_path_edit.text()
+        if not local_path or not container_name or not download_path:
+            QMessageBox.warning(self, "Input Error", "Please fill in all fields.")
+            return
+
+        self.upload_thread = UploadThread(local_path, container_name, download_path)
+        self.upload_thread.update_status.connect(self.status_label.setText)
+        self.upload_thread.update_total_images.connect(
+            lambda total: self.total_images_label.setText(f"Total Images: {total}"))
+        self.upload_thread.upload_complete.connect(
+            lambda: QMessageBox.information(self, "Status", "Upload and URL creation completed"))
+        self.upload_thread.start()
+
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    main_window = MainWindow()
+    main_window.show()
+    sys.exit(app.exec_())
