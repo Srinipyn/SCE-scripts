@@ -1,0 +1,152 @@
+import os
+import re
+from openpyxl import load_workbook, Workbook
+import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QFileDialog, QMessageBox, QProgressBar
+from PyQt5.QtGui import QPixmap, QFont
+import requests
+from io import BytesIO
+
+def clean_text(text):
+    if text:
+        text = text.replace('_x000D_', '')  # Remove _x000D_
+        text = text.strip()  # Remove leading and trailing whitespace
+    return text
+
+def process():
+    # Define the file path
+    file_path = file_entry.text()
+
+    # Load the workbook and select the active sheet
+    workbook = load_workbook(file_path)
+    sheet = workbook.active
+
+    # Create a new workbook for the output
+    output_workbook = Workbook()
+    output_sheet = output_workbook.active
+
+    # Copy the headers from the original sheet
+    for col_num, header in enumerate(sheet[1], 1):
+        output_sheet.cell(row=1, column=col_num, value=header.value)
+
+    # Add a new header for the combined paragraph
+    output_sheet.cell(row=1, column=len(sheet[1]) + 1, value="Combined Paragraph")
+
+    # Update the progress bar range
+    progress_bar.setMaximum(sheet.max_row - 1)
+
+    # Iterate over each row in the sheet (skipping the header)
+    for row_num, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), 2):
+        # Copy the original data to the output sheet (this keeps the original data intact)
+        for col_num, cell in enumerate(row, 1):
+            output_sheet.cell(row=row_num, column=col_num, value=cell)
+
+        # Create a list to store sentences for the current row
+        sentences = []
+
+        # Iterate over each cell in the current row and process it
+        for cell in row[1:]:
+            cell = clean_text(cell)  # Clean the cell text
+            if cell and cell != 'nan':
+                # Split by periods and newline characters, remove extra spaces, and ensure a space follows each sentence
+                parts = re.split(r'[.\n]', cell)
+                processed_parts = []
+                for part in parts:
+                    cleaned_part = " ".join(part.split()).strip()
+                    if cleaned_part:
+                        processed_parts.append(cleaned_part)
+                if processed_parts:
+                    processed_cell = '. '.join(processed_parts) + '.'
+                    sentences.append(processed_cell)
+
+        # Combine the sentences into one paragraph for the current row
+        paragraph = " ".join(sentences)
+        print(paragraph)
+
+        # Write the combined paragraph to the output sheet
+        output_sheet.cell(row=row_num, column=len(row) + 1, value=paragraph)
+
+        # Update the progress bar
+        progress_bar.setValue(row_num - 1)
+
+    # Save the output workbook
+    output_workbook.save(file_path)
+
+    # Show completion message
+    QMessageBox.information(window, "Process Complete", "File processing is complete!")
+
+def select_file():
+    options = QFileDialog.Options()
+    file_path, _ = QFileDialog.getOpenFileName(
+        window,
+        "Select File",
+        "",
+        "Excel Files (*.csv *.xls *.xlsx);;All Files (*)",
+        options=options
+    )
+    if file_path:
+        file_entry.setText(file_path)
+
+# Initialize the application
+app = QApplication(sys.argv)
+
+# Create the main window
+window = QWidget()
+window.setWindowTitle('Squared Circle Business Tools')
+window.setGeometry(300, 300, 800, 600)  # Set window size and position
+window.setStyleSheet('background-color: #FFFFFF;')  # Set background color
+
+# Set up font
+font = QFont()
+font.setPointSize(12)
+
+# Image URL
+image_url = 'https://squaredcircle.in/wp-content/uploads/2022/04/cropped-logo.jpg'
+
+# Download the image
+response = requests.get(image_url)
+image_data = BytesIO(response.content)
+
+# Load the image into QPixmap
+image_pixmap = QPixmap()
+image_pixmap.loadFromData(image_data.read())
+
+# Add an image at the top
+image_label = QLabel(window)
+image_label.setPixmap(image_pixmap)
+image_label.setGeometry(50, 1, 200, 200)  # x, y, width, height
+
+# Data Cleaning Label
+data_cleaning_label = QLabel('Data Formatting ', window)
+data_cleaning_label.setGeometry(250, 50, 200, 30)  # x, y, width, height
+
+# File Label and Input
+file_label = QLabel('Select File:', window)
+file_label.setGeometry(50, 200, 100, 30)  # x, y, width, height
+
+file_entry = QLineEdit(window)
+file_entry.setGeometry(200, 200, 300, 30)  # x, y, width, height
+
+file_button = QPushButton('Browse', window)
+file_button.setGeometry(510, 200, 100, 30)  # x, y, width, height
+file_button.clicked.connect(select_file)
+
+# Info Label
+info_label = QLabel('1. Excel order format ', window)
+info_label.setGeometry(50, 300, 700, 60)  # x, y, width, height
+
+# Progress Bar
+progress_bar = QProgressBar(window)
+progress_bar.setGeometry(200, 350, 400, 30)  # x, y, width, height
+progress_bar.setValue(0)  # Initialize with 0% progress
+
+# Submit Button
+submit_button = QPushButton('Format', window)
+submit_button.setGeometry(350, 390, 100, 30)  # x, y, width, height
+submit_button.clicked.connect(process)
+
+# Show the main window
+window.show()
+
+# Run the application's event loop
+sys.exit(app.exec_())
