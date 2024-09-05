@@ -6,11 +6,19 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButto
 from PyQt5.QtGui import QPixmap, QFont
 import requests
 from io import BytesIO
+import time
+import datetime
+import pymssql
+import socket
 
 def clean_text(text):
     if text:
         text = text.replace('_x000D_', '')  # Remove _x000D_
         text = text.strip()  # Remove leading and trailing whitespace
+        # Add any specific words you want to remove
+        words_to_remove = ['Ingredients', 'Allergen Information','Allergy Information','Dietary Information']
+        for word in words_to_remove:
+            text = text.replace(word, '')
     return text
 
 def process():
@@ -69,8 +77,27 @@ def process():
         # Update the progress bar
         progress_bar.setValue(row_num - 1)
 
+
     # Save the output workbook
     output_workbook.save(file_path)
+    count = (sheet.max_row - 1)
+    pname = "M&S"
+    server = ""
+    port = 19219
+    database = ""
+    username = ""
+    password = ""
+    todaym = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    process_name = "M&S Food - Description"
+    manual = 0
+    automation = 0
+    system_id = socket.gethostname()
+    conn = pymssql.connect(server=server, user=username, password=password, database=database, port=port)
+    cursor = conn.cursor()
+    insert_query = "INSERT INTO [dbo].[Automation_usage] (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    data_to_insert = (todaym, pname, process_name, count, manual, automation, system_id)
+    cursor.execute(insert_query, data_to_insert)
+    conn.commit()
 
     # Show completion message
     QMessageBox.information(window, "Process Complete", "File processing is complete!")
