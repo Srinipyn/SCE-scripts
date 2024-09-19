@@ -1,0 +1,427 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver import ActionChains
+from datetime import datetime
+from selenium.webdriver.support.ui import Select
+import tkinter as tk
+from tkinter import messagebox
+from tkinter import font,filedialog
+import openpyxl
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
+import math
+import pymssql
+import datetime
+import socket
+from http.cookies import Morsel
+import time
+import requests
+import numpy as np
+from io import BytesIO
+from PIL import Image
+import os
+
+def hide_existing_add_new():
+    # skus, path of the folders in for each sku
+    input_path = file_entry.get()
+
+    options = webdriver.ChromeOptions()  # hide image
+    driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+    workbook = openpyxl.load_workbook(input_path)
+    sheet = workbook.active
+    last_row = sheet.max_row
+    userid = user_entry.get()  #
+    password = password_entry.get()  #
+    link = r'https://adm.eyewa.com/eyewa_adminpanel/admin/index/index/key/d62eebeed3af7adc818bf69150475eb9a1d4988fec3418725e0d57b29226f525/'
+
+    try:
+        driver.get(link)
+        elementuser = driver.find_element(By.NAME, "login[username]")
+        elementuser.send_keys(userid)
+        elementpass = driver.find_element(By.NAME, "login[password]")
+        elementpass.send_keys(password)
+
+        elementcat = driver.find_element(By.CSS_SELECTOR, "button.action-login.action-primary")
+        driver.execute_script("arguments[0].click();", elementcat)
+        time.sleep(5)
+
+        # Maximize the browser window
+        driver.maximize_window()
+
+        # Locate the top-level 'Catalog' menu item
+        catalog_menu_item = driver.find_element(By.CSS_SELECTOR, "li#menu-magento-catalog-catalog > a")
+        catalog_menu_item.click()
+
+        # Wait for the submenu to be visible
+        time.sleep(2)  # Adjust sleep time as needed for the submenu to appear
+
+        # Locate the 'Categories' submenu item
+        categories_menu_item = driver.find_element(By.CSS_SELECTOR, "li.item-catalog-products > a")
+
+        # Click the 'Categories' submenu item
+        categories_menu_item.click()
+
+        # pname = userid
+        # server = ""
+        # port = 19219
+        # database = ''
+        # username = ''
+        # password = ''
+        #
+        # todaym = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # process_name = "Magento image operation - Upload image"
+        # count = 0
+        # manual = 0
+        # autoamtion = 0
+        # system_id = socket.gethostname()
+        # conn = pymssql.connect(server=server, user=username, password=password, database=database, port=port)
+        # cursor = conn.cursor()
+        # insert_query = "INSERT INTO [dbo].[Automation_usage] (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        # data_to_insert = (todaym, pname, process_name, count, manual, autoamtion, system_id)
+        # cursor.execute(insert_query, data_to_insert)
+        # conn.commit()
+        # processed = 0
+        for row_number in range(2, last_row + 1):
+            # Extract search input from the first column (assuming column A)
+            search_text = sheet.cell(row=row_number, column=1).value
+
+            # # Extract folder path from the second column (assuming column B)
+            # folder_patha = sheet.cell(row=row_number, column=2).value
+            #
+            # # Extract folder path from the second column (assuming column B)
+            # folder_pathb = sheet.cell(row=row_number, column=3).value
+
+
+            # Optionally, wait for some time to observe the result
+            time.sleep(5)
+            # Wait until the search input field is present and visible
+            wait = WebDriverWait(driver, 10)
+            search_input = wait.until(EC.visibility_of_element_located((By.ID, 'fulltext')))
+            time.sleep(3)
+            # Clear the input field
+            search_input.clear()
+
+            # Enter new text
+            search_input.send_keys(search_text)  # Update with the keyword you want to search for
+            time.sleep(3)
+            # Press Enter
+            search_input.send_keys(Keys.ENTER)
+            time.sleep(7)
+            # Define maximum retries and delay between retries
+            max_retries = 10
+            delay_between_retries = 3  # seconds
+
+            # Initialize retry count
+            retry_count = 0
+
+            while retry_count < max_retries:
+                try:
+                    # Wait for the 'Edit' link to become clickable
+                    wait = WebDriverWait(driver, 20)
+                    edit_link = wait.until(EC.element_to_be_clickable((By.LINK_TEXT, 'Edit')))
+                    print("'Edit' link found and clickable. Proceeding with the next steps.")
+                    edit_link.click()  # Perform the click action on the 'Edit' link
+                    # Add your next steps here
+                    break
+                except Exception as e:
+                    print(f"Attempt {retry_count + 1}: 'Edit' link not found. Retrying...")
+                    retry_count += 1
+                    time.sleep(delay_between_retries)
+            else:
+                print("Failed to find 'Edit' link after maximum retries. Proceeding with alternative steps.")
+                # Add your alternative steps here if 'Edit' link is not found
+            time.sleep(7)
+            # Locate the div with the unique data-index="gallery"
+            gallery_div = WebDriverWait(driver, 50).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-index="gallery"]'))
+            )
+
+            # wait = WebDriverWait(driver, 10)
+            # button = wait.until(EC.presence_of_element_located((By.ID, "store-change-button")))
+            # ActionChains(driver).move_to_element(button).click().perform()
+            # wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".dropdown-menu")))
+            # time.sleep(1)
+            # # Find all links with text containing "English"
+            # english_links = driver.find_elements(By.XPATH, "//a[contains(text(), 'English')]")
+            #
+            # english_links.click()
+
+            # Check if the button's text contains "All Store Views"
+            # if "All Store Views" not in button.text:
+            #     # Open the dropdown
+            #     ActionChains(driver).move_to_element(button).click().perform()
+            #
+            #     # Wait for the dropdown options to be present
+            #     wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".dropdown-menu")))
+            #     time.sleep(1)
+            #     # Find the option "All Store Views" and click it
+            #     all_store_views_option = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "store-switcher-all")))
+            #     all_store_views_option.click()
+            #     wait = WebDriverWait(driver, 10)
+            #     ok_button = wait.until(
+            #         EC.element_to_be_clickable((By.CSS_SELECTOR, ".action-primary.action-accept[data-role='action']")))
+            #
+            #     # Click the button
+            #     ok_button.click()
+
+            #all store extarction
+            button = wait.until(EC.presence_of_element_located((By.ID, "store-change-button")))
+            if 'All Store Views' not in button.text:
+                wait = WebDriverWait(driver, 10)
+                button = wait.until(EC.presence_of_element_located((By.ID, "store-change-button")))
+                ActionChains(driver).move_to_element(button).click().perform()
+
+                # Wait for the dropdown options to be present
+                wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".dropdown-menu")))
+                time.sleep(1)
+
+            gallery_div = WebDriverWait(driver, 50).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-index="gallery"]'))
+            )
+            time.sleep(3)
+            # Scroll the div into view
+
+            # Locate the div with the unique data-index="gallery" and then click the fieldset title within it
+            fieldset_title = WebDriverWait(gallery_div, 50).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, '.fieldset-wrapper-title'))
+            )
+            fieldset_title.click()
+            time.sleep(3)
+            # Scroll the div into view
+            driver.execute_script("arguments[0].scrollIntoView();", gallery_div)
+            time.sleep(3)
+
+            image_wrappers = WebDriverWait(driver, 50).until(
+                EC.presence_of_all_elements_located(
+                    (By.CSS_SELECTOR, '.image.item:not(.hidden-for-front) .product-image'))
+            )
+
+            # Extract image URLs
+            image_links = [img.get_attribute('src') for img in image_wrappers]
+            comma_separated_links = ', '.join(image_links)
+
+            sheet.cell(row=row_number, column=2, value=comma_separated_links)
+            # Print or use the comma-separated links
+            print(comma_separated_links)
+
+            #other country view
+
+            # Scroll to the top of the page using JavaScript
+            driver.execute_script("window.scrollTo(0, 0);")
+
+            button = wait.until(EC.presence_of_element_located((By.ID, "store-change-button")))
+            ActionChains(driver).move_to_element(button).click().perform()
+            # Wait for the store-change-button to be visible
+            wait = WebDriverWait(driver, 10)
+
+            # Find all elements that have 'English' text in the store views
+            english_stores = [store for store in driver.find_elements(By.CSS_SELECTOR, 'a[data-role="store-view-id"]')
+                              if "English" in store.text]
+            kl = len(english_stores)
+            print(kl)
+            button = wait.until(EC.presence_of_element_located((By.ID, "store-change-button")))
+            ActionChains(driver).move_to_element(button).click().perform()
+            col = 3
+            # Loop through all "English" store views
+            for index, store in enumerate(english_stores):
+                # Scroll to the top of the page using JavaScript
+                driver.execute_script("window.scrollTo(0, 0);")
+                time.sleep(1)
+                # Wait for the 'store-change-button' and click it to open the dropdown
+                button = wait.until(EC.presence_of_element_located((By.ID, "store-change-button")))
+                ActionChains(driver).move_to_element(button).click().perform()
+
+                # Optional delay to wait for the dropdown to fully open
+                time.sleep(1)
+
+                # Refresh the list of store views each time, as the dropdown might reload or disappear
+                dropdown_menu = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".dropdown-menu")))
+
+                # Find all "English" store views again after reopening the dropdown
+                english_stores = [store for store in
+                                  driver.find_elements(By.CSS_SELECTOR, 'a[data-role="store-view-id"]')
+                                  if "English" in store.text]
+
+                # Select the current "English" store view from the refreshed list
+                store = english_stores[index]  # Get the current "English" store from the refreshed list
+
+                # Scroll to the specific "English" store view
+                driver.execute_script("arguments[0].scrollIntoView(true);", store)
+                time.sleep(1)
+                # Scroll to the top of the page using JavaScript
+                driver.execute_script("window.scrollTo(0, 0);")
+
+                # Print the name of the store containing "English"
+                store_name = store.text.strip()  # Get the text and remove any extra whitespace
+                print(f"Selecting English store #{index + 1}: {store_name}")
+
+                # Optional delay to allow scrolling to complete
+                time.sleep(1)
+
+                # Click the "English" store view
+                store.click()
+
+                # Optional delay after clicking (for page load or UI change)
+                time.sleep(3)
+                wait = WebDriverWait(driver, 10)
+                ok_button = wait.until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, ".action-primary.action-accept[data-role='action']")))
+
+                # Click the button
+                ok_button.click()
+
+                gallery_div = WebDriverWait(driver, 50).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-index="gallery"]'))
+                )
+                time.sleep(3)
+                # Scroll the div into view
+
+                # Locate the div with the unique data-index="gallery" and then click the fieldset title within it
+                fieldset_title = WebDriverWait(gallery_div, 50).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, '.fieldset-wrapper-title'))
+                )
+                fieldset_title.click()
+                time.sleep(3)
+                # Scroll the div into view
+                driver.execute_script("arguments[0].scrollIntoView();", gallery_div)
+                time.sleep(3)
+
+
+
+                image_wrappers = WebDriverWait(driver, 50).until(
+                    EC.presence_of_all_elements_located(
+                        (By.CSS_SELECTOR, '.image.item:not(.hidden-for-front) .product-image'))
+                )
+
+                # Extract image URLs
+                image_links = [img.get_attribute('src') for img in image_wrappers]
+                comma_separated_links = ', '.join(image_links)
+
+                # Print or use the comma-separated links
+                print(comma_separated_links)
+
+
+
+
+
+                sheet.cell(row=row_number, column=col, value=comma_separated_links)
+                col = col + 1
+                workbook.save(input_path)
+
+    except Exception as e:
+        print(e)
+
+    finally:
+        driver.quit()
+        messagebox.showerror("status", "Done")
+
+
+# def hide_existing_add_new(driver):
+#             # Optionally, wait a bit for the scroll to complete
+#             time.sleep(3)
+#             gallery_div = WebDriverWait(driver, 50).until(
+#                 EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-index="gallery"]'))
+#             )
+#
+#             # Optionally, wait a bit for the scroll to complete
+#             time.sleep(7)
+#
+#             # Locate the div with the unique data-index="gallery" and then click the fieldset title within it
+#             fieldset_title = WebDriverWait(gallery_div, 50).until(
+#                 EC.element_to_be_clickable((By.CSS_SELECTOR, '.fieldset-wrapper-title'))
+#             )
+#             fieldset_title.click()
+#             time.sleep(3)
+#             # Scroll the div into view
+#             driver.execute_script("arguments[0].scrollIntoView();", gallery_div)
+#             time.sleep(3)
+#
+#             folder_path = f"{folder_patha}\\{folder_pathb}"
+#             # Get the list of relevant image files in the folder
+#             image_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+#
+#             # Total number of relevant image files
+#             total_images = len(image_files)
+#
+#             # Initialize first_iteration flag
+#             first_iteration = True
+#
+#             # Iterate over the image files
+#             for i, filename in enumerate(image_files):
+#                 file_input = driver.find_element(By.ID, 'fileupload')
+#                 file_path = os.path.join(folder_path, filename)
+#                 file_input.send_keys(file_path)
+#             time.sleep(5)
+#             save_button = WebDriverWait(driver, 50).until(
+#                 EC.element_to_be_clickable((By.ID, "save-button")))
+#             # Click the Save button
+#             save_button.click()
+#             time.sleep(5)
+#             WebDriverWait(driver, 50).until(
+#                 EC.invisibility_of_element_located((By.CLASS_NAME, "loading-mask"))
+#             )
+#             print("Loading mask disappeared.")
+#             time.sleep(10)
+#             back_button = WebDriverWait(driver, 50).until(EC.element_to_be_clickable((By.ID, "back")))
+#
+#             # Click the Back button
+#             back_button.click()
+#             return data_fetched
+            # processed = processed + 1
+            # update_query = "UPDATE Automation_usage SET count = %s WHERE Date = %s and user_name= %s and process_name= %s and system_id=%s"
+            # update_to_insert = (processed, todaym, pname, process_name, system_id)
+            # cursor.execute(update_query, update_to_insert)
+            # conn.commit()
+
+
+            # Optionally, wait to see the upload progress
+
+
+
+def select_file():
+    file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx; *.xls; *.csv")])
+    file_entry.delete(0, tk.END)
+    file_entry.insert(tk.END, file_path)
+
+root = tk.Tk()
+root.title("Upload all")
+
+# Get the screen width and height
+screen_width = 500
+screen_height = 500
+
+# Set the window size
+root.geometry(f"{screen_width}x{screen_height}")
+
+custom_font = font.Font(family="Helvetica", size=16, weight="bold")
+
+title_label = tk.Label(root, text="Upload all", font=custom_font)
+title_label.place(x=100, y=100)
+
+user_label = tk.Label(root, text="Enter Username")
+user_label.place(x=100, y=200, anchor="e")
+user_entry = tk.Entry(root)
+user_entry.place(x=110, y=200)
+
+password_label = tk.Label(root, text="password")
+password_label.place(x=100, y=250, anchor="e")
+password_entry = tk.Entry(root)
+password_entry.place(x=110, y=250)
+
+# Select Files
+file_label = tk.Label(root, text="Select File:")
+file_label.place(x=20, y=300)
+file_entry = tk.Entry(root, width=40)
+file_entry.place(x=100, y=300)
+file_button = tk.Button(root, text="Browse", command=select_file)
+file_button.place(x=400, y=300)
+
+process_button = tk.Button(root, text="Process", command=hide_existing_add_new)
+process_button.place(x=200, y=400)
+
+root.mainloop()
