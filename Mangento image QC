@@ -109,9 +109,20 @@ def hide_existing_add_new():
         # cursor.execute(insert_query, data_to_insert)
         # conn.commit()
         # processed = 0
+        sheet.cell(row=1, column=2).value = 'All_store_view'
+        workbook.save(input_path)
+
+        # Write headers into the first row of the Excel sheet
+        for col_num, header_text in enumerate(result, start=3):
+            sheet.cell(row=1, column=col_num).value = header_text
+            workbook.save(input_path)
+
+
         for row_number in range(2, last_row + 1):
             # Extract search input from the first column (assuming column A)
             search_text = sheet.cell(row=row_number, column=1).value
+
+
 
             # # Extract folder path from the second column (assuming column B)
             # folder_patha = sheet.cell(row=row_number, column=2).value
@@ -299,9 +310,22 @@ def hide_existing_add_new():
                 except Exception as e:
                     print(f"Error selecting English store for country {country_name}: {str(e)}")
 
-                sheet.cell(row=row_number, column=col, value=comma_separated_links)
-                col = col + 1
-                workbook.save(input_path)
+                country_column = None
+                for col_num in range(1, sheet.max_column + 1):  # Loop through all columns
+                    header_value = sheet.cell(row=1, column=col_num).value
+                    if header_value == country_name:
+                        country_column = col_num
+                        break  # Stop once the correct column is found
+
+                if country_column:
+                    # Write the comma-separated links to the correct column for the current row
+                    sheet.cell(row=row_number, column=country_column, value=comma_separated_links)
+                    # Save the workbook after changes
+                    workbook.save(input_path)
+                else:
+                    print(f"Country '{country_name}' not found in the headers.")
+
+            
                 # Scroll to the top initially
 
             driver.execute_script("window.scrollTo(0, 0);")
