@@ -10,7 +10,7 @@ from datetime import datetime
 from selenium.webdriver.support.ui import Select
 import tkinter as tk
 from tkinter import messagebox
-from tkinter import font,filedialog
+from tkinter import font, filedialog
 import openpyxl
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
@@ -25,6 +25,7 @@ import numpy as np
 from io import BytesIO
 from PIL import Image
 import os
+
 
 def hide_existing_add_new():
     # skus, path of the folders in for each sku
@@ -89,26 +90,26 @@ def hide_existing_add_new():
         # Click the 'Categories' submenu item
         categories_menu_item.click()
 
-        # pname = userid
-        # server = ""
-        # port = 19219
-        # database = ''
-        # username = ''
-        # password = ''
-        #
-        # todaym = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        # process_name = "Magento image operation - Upload image"
-        # count = 0
-        # manual = 0
-        # autoamtion = 0
-        # system_id = socket.gethostname()
-        # conn = pymssql.connect(server=server, user=username, password=password, database=database, port=port)
-        # cursor = conn.cursor()
-        # insert_query = "INSERT INTO [dbo].[Automation_usage] (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
-        # data_to_insert = (todaym, pname, process_name, count, manual, autoamtion, system_id)
-        # cursor.execute(insert_query, data_to_insert)
-        # conn.commit()
-        # processed = 0
+        pname = userid
+        server = ""
+        port = 19219
+        database = 'admin1'
+        username = ''
+        password = ''
+
+        todaym = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        process_name = "Magento image operation - Upload image"
+        count = 0
+        manual = 0
+        autoamtion = 0
+        system_id = socket.gethostname()
+        conn = pymssql.connect(server=server, user=username, password=password, database=database, port=port)
+        cursor = conn.cursor()
+        insert_query = "INSERT INTO [dbo].[Automation_usage] (Date, user_name, process_name,count,manual,automation,system_id) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        data_to_insert = (todaym, pname, process_name, count, manual, autoamtion, system_id)
+        cursor.execute(insert_query, data_to_insert)
+        conn.commit()
+        processed = 0
         sheet.cell(row=1, column=2).value = 'All_store_view'
         workbook.save(input_path)
 
@@ -117,19 +118,15 @@ def hide_existing_add_new():
             sheet.cell(row=1, column=col_num).value = header_text
             workbook.save(input_path)
 
-
         for row_number in range(2, last_row + 1):
             # Extract search input from the first column (assuming column A)
             search_text = sheet.cell(row=row_number, column=1).value
-
-
 
             # # Extract folder path from the second column (assuming column B)
             # folder_patha = sheet.cell(row=row_number, column=2).value
             #
             # # Extract folder path from the second column (assuming column B)
             # folder_pathb = sheet.cell(row=row_number, column=3).value
-
 
             # Optionally, wait for some time to observe the result
             time.sleep(5)
@@ -175,9 +172,7 @@ def hide_existing_add_new():
                 EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-index="gallery"]'))
             )
 
-
-
-            #all store extarction
+            # all store extarction
             button = wait.until(EC.presence_of_element_located((By.ID, "store-change-button")))
             if 'All Store Views' not in button.text:
                 wait = WebDriverWait(driver, 10)
@@ -217,10 +212,7 @@ def hide_existing_add_new():
             # Print or use the comma-separated links
             print(comma_separated_links)
 
-
-
-
-            #other country view
+            # other country view
             col = 3
             # Scroll to the top initially
             driver.execute_script("window.scrollTo(0, 0);")
@@ -325,7 +317,6 @@ def hide_existing_add_new():
                 else:
                     print(f"Country '{country_name}' not found in the headers.")
 
-            
                 # Scroll to the top initially
 
             driver.execute_script("window.scrollTo(0, 0);")
@@ -334,22 +325,26 @@ def hide_existing_add_new():
 
             # Click the Back button
             back_button.click()
+            processed = processed + 1
+            update_query = "UPDATE Automation_usage SET count = %s WHERE Date = %s and user_name= %s and process_name= %s and system_id=%s"
+            update_to_insert = (processed, todaym, pname, process_name, system_id)
+            cursor.execute(update_query, update_to_insert)
+            conn.commit()
 
     except Exception as e:
-        print(e)
+        messagebox.showerror("status", e)
+
 
     finally:
         driver.quit()
         messagebox.showerror("status", "Done")
 
 
-
-
-
 def select_file():
     file_path = filedialog.askopenfilename(filetypes=[("Excel Files", "*.xlsx; *.xls; *.csv")])
     file_entry.delete(0, tk.END)
     file_entry.insert(tk.END, file_path)
+
 
 root = tk.Tk()
 root.title("Magento Image QC")
@@ -377,8 +372,7 @@ password_entry = tk.Entry(root)
 password_entry.place(x=110, y=250)
 
 countries_to_select = ["UAE", "SAUDI ARABIA", "USA", "KUWAIT", "QATAR", "OMAN",
-                                   "BAHRAIN"]
-
+                       "BAHRAIN"]
 
 # Add a checkbox
 checkbox_var1 = tk.IntVar()  # Variable to hold the checkbox state
