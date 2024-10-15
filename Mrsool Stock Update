@@ -1,1 +1,68 @@
+# --"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9223 --user-data-dir="C:\Users\squar\AppData\Local\Google\Chrome\User Data\System Profile"
+#download chrome driver
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
+from selenium.webdriver.common.keys import Keys
+
+# Set up Chrome options to connect to the debugging port
+chrome_options = Options()
+chrome_options.add_experimental_option("debuggerAddress", "127.0.0.1:9223")
+
+# Specify the path to chromedriver using the Service object
+service = Service(r"C:/chromedriver-win64/chromedriver.exe")
+
+# Create a WebDriver instance that attaches to the running Chrome session
+driver = webdriver.Chrome(service=service, options=chrome_options)
+
+# Navigate to the desired URL
+driver.get(r"https://business.mrsool.co/super-user/products")
+
+# Wait for the page to load
+time.sleep(2)  # Optional: Adjust as needed for your specific page load
+
+# Define the target store views
+target_store_views = ["Yas Mall, Jeddah", "King Abdallah Street", "King Abdulaziz Road"]
+
+# Loop through each store view to send data to the input box
+for store_view in target_store_views:
+    try:
+        category_input = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "input[id='input-112']")))
+        category_input.click()
+        # Send the Escape key after clicking
+        category_input.send_keys(Keys.ESCAPE)
+        time.sleep(1)
+        # Send reverse tab (Shift + Tab) after Escape
+        category_input.send_keys(Keys.SHIFT, Keys.TAB)
+        time.sleep(1)
+
+        branch_input = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, "input[id='input-109']"))
+        )
+
+        # Clear any existing text in the input box
+        branch_input.send_keys(Keys.BACK_SPACE)
+        time.sleep(1)
+        branch_input.send_keys(store_view)
+        time.sleep(1)
+        branch_input.send_keys(Keys.ARROW_DOWN)
+        time.sleep(1)
+        branch_input.send_keys(Keys.ARROW_DOWN)
+        time.sleep(1)
+        branch_input.send_keys(Keys.ENTER)
+
+        category_input = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[id='input-112']")))
+        category_input.click()
+        # Send the Escape key after clicking
+        category_input.send_keys(Keys.ESCAPE)
+        time.sleep(1)
+
+
+    except Exception as e:
+        print(f"Error sending data to input box: {str(e)}")
 
