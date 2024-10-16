@@ -8,6 +8,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
+import pyautogui
+
 
 # Set up Chrome options to connect to the debugging port
 chrome_options = Options()
@@ -56,8 +59,90 @@ for store_view in target_store_views:
         time.sleep(1)
         branch_input.send_keys(Keys.ENTER)
 
-        category_input = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[id='input-112']")))
-        category_input.click()
+        # List of options to select
+        items_to_select = [
+            "Acuvue Prescribed Contact Lens",
+            "Contour Color Contact Lens"
+        ]
+
+        # Loop through each item in the list and select it
+        for item in items_to_select:
+            category_input = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[id='input-112']")))
+            category_input.click()
+
+            # Locate the item by its label text and click on it
+            xpath = f"//div[@role='option']//label[text()='{item}']"
+            option = driver.find_element(By.XPATH, xpath)
+            option.click()
+            time.sleep(4)
+            # You can add a delay if necessary to allow the page to process the click
+            # Get the screen size
+            screen_width, screen_height = pyautogui.size()
+
+            # Calculate the middle of the screen
+            middle_x = screen_width // 2
+            middle_y = screen_height // 2
+
+            # Move the mouse to the middle of the screen and click
+            pyautogui.moveTo(middle_x, middle_y)
+            pyautogui.click()
+            time.sleep(1)
+            # Initialize ActionChains
+            actions = ActionChains(driver)
+
+            # Send the down arrow key
+            actions.send_keys(Keys.ARROW_DOWN).perform()
+
+            # List of SKUs you want to search for
+            skus_list = [
+                '(-3.75) Acuvue Oasys P90',
+                '(-8) Acuvue Oasys Max P30',  # Add more SKUs as needed
+                '(-8.5) Acuvue Oasys Max P30'
+            ]
+
+
+            # Loop through each SKU in the list
+            for skus in skus_list:
+                sku_found = False  # Reset flag for each SKU
+
+                while not sku_found:
+                    try:
+                        wait = WebDriverWait(driver, 10)
+                        # Locate all elements using CSS selector
+                        card_elements = wait.until(EC.presence_of_all_elements_located(
+                            (By.CSS_SELECTOR, "div.surface.my-2.align-center.elevation-0.v-card.v-sheet.theme--light")))
+
+                        # Loop through each card element and check for the SKU
+                        for card_element in card_elements:
+                            # Check if the current card contains the SKU
+                            if skus in card_element.text:
+                                # Locate the edit button (dots icon) within the current card using CSS selector
+                                edit_button = card_element.find_element(By.CSS_SELECTOR, "button.mdi-dots-vertical")
+
+                                # Click the edit button
+                                edit_button.click()
+
+                                # SKU found, set flag to True and break out of the loop
+                                sku_found = True
+                                print(f"Clicked edit button for SKU: {skus}")
+                                break
+
+                        # If the SKU was not found, scroll down to load more items
+                        if not sku_found:
+                            # Focus on the body element and send the down arrow key multiple times to scroll down
+                            body_element = driver.find_element(By.TAG_NAME, 'body')
+
+
+                    except Exception as e:
+                        print(f"An error occurred while searching for SKU '{skus}': {e}")
+                        break  # Exit the loop if any error occurs
+
+            # Add a small delay if needed
+            time.sleep(2)
+
+            # category_input = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[id='input-112']")))
+            # category_input.click()
+
         # Send the Escape key after clicking
         category_input.send_keys(Keys.ESCAPE)
         time.sleep(1)
@@ -65,4 +150,3 @@ for store_view in target_store_views:
 
     except Exception as e:
         print(f"Error sending data to input box: {str(e)}")
-
