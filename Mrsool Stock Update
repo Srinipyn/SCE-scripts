@@ -12,6 +12,14 @@ from selenium.webdriver.common.action_chains import ActionChains
 import pyautogui
 
 
+
+# Function to get the last card element's ID
+def get_card_count():
+    card_elements = wait.until(EC.presence_of_all_elements_located(
+        (By.CSS_SELECTOR, "div.surface.my-2.align-center.elevation-0.v-card.v-sheet.theme--light")))
+    return len(card_elements)
+
+
 # Set up Chrome options to connect to the debugging port
 chrome_options = Options()
 chrome_options.add_experimental_option("debuggerAddress", "127.0.0.1:9223")
@@ -21,6 +29,8 @@ service = Service(r"C:/chromedriver-win64/chromedriver.exe")
 
 # Create a WebDriver instance that attaches to the running Chrome session
 driver = webdriver.Chrome(service=service, options=chrome_options)
+actions = ActionChains(driver)
+wait = WebDriverWait(driver, 10)
 
 # Navigate to the desired URL
 driver.get(r"https://business.mrsool.co/super-user/products")
@@ -90,55 +100,103 @@ for store_view in target_store_views:
             # Initialize ActionChains
             actions = ActionChains(driver)
 
-            # Send the down arrow key
-            actions.send_keys(Keys.ARROW_DOWN).perform()
+            # Record the start time
+            # start_time = time.time()
+            #
+            # # Scroll for 7 seconds
+            # while time.time() - start_time < 5:
+            #     # Send the down arrow key to scroll
+            #     actions.send_keys(Keys.ARROW_DOWN).perform()
+            #     # Scroll for 7 seconds or until the element count doesn't change
+            #     start_time = time.time()
+            #
+            #     # Get the initial count of card elements
+            # previous_count = get_card_count()
+            #
+            # while time.time() - start_time < 10:
+            #     # Send the down arrow key to scroll
+            #     actions.send_keys(Keys.ARROW_DOWN).perform()
+            #
+            #     # Wait briefly between scrolls
+            #     time.sleep(1)
+            #
+            #     # Get the new count of card elements
+            #     new_count = get_card_count()
+            #
+            #     # Check if the count hasn't changed
+            #     if new_count == previous_count:
+            #         print("Element count hasn't changed, stopping scroll.")
+            #         break
 
-            # List of SKUs you want to search for
-            skus_list = [
-                '(-3.75) Acuvue Oasys P90',
-                '(-8) Acuvue Oasys Max P30',  # Add more SKUs as needed
-                '(-8.5) Acuvue Oasys Max P30'
-            ]
+            # List of desired texts to find
+            desired_texts = ["(-1.25) Acuvue Moist P30", "(-2.25) Acuvue Moist P30", "(-5.75) Acuvue Define Vivid Style P30"]
+
+            # Loop through each desired text
+            for desired_text in desired_texts:
+                # Wait for all the card elements to be present on the page
+                card_elements = wait.until(EC.presence_of_all_elements_located(
+                    (By.CSS_SELECTOR, "div.surface.my-2.align-center.elevation-0.v-card.v-sheet.theme--light")))
+
+                # Loop through each card element and check for the SKU
+                for card_element in card_elements:
+                    if desired_text in card_element.text:
+                        # Scroll to the element to make sure it's visible
+                        driver.execute_script("arguments[0].scrollIntoView();", card_element)
+                        print(f"Found card with SKU: {desired_text}")
+
+                        # Try locating the button and clicking it
+                        try:
+                            # Locate the button using a CSS selector or XPath
+                            button = card_element.find_element(By.CSS_SELECTOR, "button.mdi-dots-vertical")
+                            button.click()
+                            print(f"Clicked edit button for SKU: {desired_text}")
+                        except Exception as e:
+                            print(f"Error clicking button for SKU {desired_text}: {e}")
+                        break  # Exit the loop after finding and clicking the button  # Wait briefly to allow new content to load
 
 
-            # Loop through each SKU in the list
-            for skus in skus_list:
-                sku_found = False  # Reset flag for each SKU
-
-                while not sku_found:
-                    try:
-                        wait = WebDriverWait(driver, 10)
-                        # Locate all elements using CSS selector
-                        card_elements = wait.until(EC.presence_of_all_elements_located(
-                            (By.CSS_SELECTOR, "div.surface.my-2.align-center.elevation-0.v-card.v-sheet.theme--light")))
-
-                        # Loop through each card element and check for the SKU
-                        for card_element in card_elements:
-                            # Check if the current card contains the SKU
-                            if skus in card_element.text:
-                                # Locate the edit button (dots icon) within the current card using CSS selector
-                                edit_button = card_element.find_element(By.CSS_SELECTOR, "button.mdi-dots-vertical")
-
-                                # Click the edit button
-                                edit_button.click()
-
-                                # SKU found, set flag to True and break out of the loop
-                                sku_found = True
-                                print(f"Clicked edit button for SKU: {skus}")
-                                break
-
-                        # If the SKU was not found, scroll down to load more items
-                        if not sku_found:
-                            # Focus on the body element and send the down arrow key multiple times to scroll down
-                            body_element = driver.find_element(By.TAG_NAME, 'body')
 
 
-                    except Exception as e:
-                        print(f"An error occurred while searching for SKU '{skus}': {e}")
-                        break  # Exit the loop if any error occurs
 
-            # Add a small delay if needed
-            time.sleep(2)
+
+            # # Loop through each SKU in the list
+            # for skus in skus_list:
+            #     sku_found = False  # Reset flag for each SKU
+            #
+            #     while not sku_found:
+            #         try:
+            #             wait = WebDriverWait(driver, 10)
+            #             # Locate all elements using CSS selector
+            #             card_elements = wait.until(EC.presence_of_all_elements_located(
+            #                 (By.CSS_SELECTOR, "div.surface.my-2.align-center.elevation-0.v-card.v-sheet.theme--light")))
+            #
+            #             # Loop through each card element and check for the SKU
+            #             for card_element in card_elements:
+            #                 # Check if the current card contains the SKU
+            #                 if skus in card_element.text:
+            #                     # Locate the edit button (dots icon) within the current card using CSS selector
+            #                     edit_button = card_element.find_element(By.CSS_SELECTOR, "button.mdi-dots-vertical")
+            #
+            #                     # Click the edit button
+            #                     edit_button.click()
+            #
+            #                     # SKU found, set flag to True and break out of the loop
+            #                     sku_found = True
+            #                     print(f"Clicked edit button for SKU: {skus}")
+            #                     break
+            #
+            #             # If the SKU was not found, scroll down to load more items
+            #             if not sku_found:
+            #                 # Focus on the body element and send the down arrow key multiple times to scroll down
+            #                 body_element = driver.find_element(By.TAG_NAME, 'body')
+
+            #
+            #         except Exception as e:
+            #             print(f"An error occurred while searching for SKU '{skus}': {e}")
+            #             break  # Exit the loop if any error occurs
+            #
+            # # Add a small delay if needed
+            # time.sleep(2)
 
             # category_input = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "input[id='input-112']")))
             # category_input.click()
